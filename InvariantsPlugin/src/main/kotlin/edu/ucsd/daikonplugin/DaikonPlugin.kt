@@ -1,7 +1,6 @@
 package edu.ucsd.daikonplugin
 
 import edu.ucsd.callgraphplugin.Callgraph
-import edu.ucsd.daikonpl.Daikon
 import org.gradle.api.Action
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -21,8 +20,7 @@ open class DaikonPlugin @Inject constructor(val workerExecutor: WorkerExecutor,
         return project.layout.files(extension.getDaikonJarPath(), workerMainClassPath)
     }
     override fun apply(project: Project) {
-        //project.pluginManager.apply(JavaPlugin::class.java)
-        project.plugins.withType(JavaPlugin::class.java, Action<JavaPlugin>{
+        project.plugins.withType(JavaPlugin::class.java) {
 
             val extension = project.extensions.create("daikonConfig",
                     DaikonExtension::class.java, project.objects)
@@ -32,7 +30,10 @@ open class DaikonPlugin @Inject constructor(val workerExecutor: WorkerExecutor,
             project.tasks.register("daikon", Daikon::class.java) { task ->
                 task.finalizedBy(testTasks)
                 task.outputDirectory.set(extension.daikonOutputDirectory)
-                task.pattern.set(extension.pattern)
+                if (project.hasProperty("daikonPattern"))
+                    task.daikonPattern.set(project.property("daikonPattern").toString())
+                else
+                    task.daikonPattern.set(extension.pattern)
                 task.additionalClassPath = getAdditionalClassPathFiles(project, extension)
                 task.daikonJarPath = extension.getDaikonJarPath().toAbsolutePath().toString()
             }
@@ -43,7 +44,6 @@ open class DaikonPlugin @Inject constructor(val workerExecutor: WorkerExecutor,
                 task.additionalClassPath = getAdditionalClassPathFiles(project, extension)
                 task.outputDirectory.set(extension.callgraphOutputDirectory)
             }
-//
-        })
+        }
     }
 }

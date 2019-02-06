@@ -34,7 +34,7 @@ tasks.wrapper {
 }
 
 apply plugin: 'invariants-plugin'
-daikonConfig {
-    pattern.set("^com\\.example\\.getty\\.")
-}
+//daikonConfig {
+//    daikonPattern.set("^com\\.example\\.getty\\.")
+//}
 

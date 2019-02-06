@@ -1,15 +1,12 @@
 package edu.ucsd.callgraphplugin
 
-import org.gradle.api.Action
 import org.gradle.api.DefaultTask
-import org.gradle.api.file.Directory
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileCollection
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.workers.IsolationMode
 import org.gradle.workers.WorkerExecutor
-import java.io.File
 import java.nio.file.Files
 import javax.inject.Inject
 

@@ -1,4 +1,4 @@
-package edu.ucsd.daikonpl
+package edu.ucsd.daikonplugin
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
@@ -9,14 +9,14 @@ import org.gradle.api.tasks.testing.Test
 import java.nio.file.Files
 
 
-open class Daikon() : DefaultTask() {
+open class Daikon : DefaultTask() {
 
     @TaskAction
     internal fun doStuff() {
         //val dep  = project.dependencies.
         //project.dependencies.add("testImplementation",FileCollection(File("/home/mmenarini/Dev/daikon/daikon.jar"))
-        if (!pattern.isPresent)
-            throw Exception("Cannot run daikon without a pattern specified")
+        if (!daikonPattern.isPresent)
+            throw Exception("Cannot run daikon without a daikonPattern specified")
         project.tasks.withType(Test::class.java).configureEach { test ->
 
             test.maxParallelForks  = 1
@@ -38,7 +38,7 @@ open class Daikon() : DefaultTask() {
                         else if (line.contains("@DAIKON_JAR@"))
                             output.println(line.replace("@DAIKON_JAR@", daikonJarPath))
                         else if (line.contains("@PATTERN@"))
-                            output.println(line.replace("@PATTERN@", pattern.get()))
+                            output.println(line.replace("@PATTERN@", daikonPattern.get()))
                         else
                             output.println(line)
                     }
@@ -62,7 +62,7 @@ open class Daikon() : DefaultTask() {
     @Internal
     lateinit var daikonJarPath: String
     @Input
-    val pattern: Property<String> = project.objects.property(String::class.java)
+    val daikonPattern: Property<String> = project.objects.property(String::class.java)
 
     @OutputDirectory
     @Optional
