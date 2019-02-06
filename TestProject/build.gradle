@@ -29,9 +29,12 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
+tasks.wrapper {
+    gradleVersion = 5.2
+}
 
 apply plugin: 'invariants-plugin'
 daikonConfig {
-    pattern = "^com\\.example\\.getty\\."
+    pattern.set("^com\\.example\\.getty\\.")
 }
 
