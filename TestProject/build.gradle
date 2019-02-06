@@ -1,0 +1,37 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("edu.ucsd.invariants:InvariantsPlugin:0.1-beta")
+    }
+}
+
+
+apply plugin: 'java'
+
+group = 'edu.ucsd.dsproj'
+version = '1.0-SNAPSHOT'
+
+description = "dsproj"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+
+
+repositories {
+    maven {
+        url = "https://plugins.gradle.org/m2/"
+    }
+}
+dependencies {
+    testCompile 'junit:junit:4.12'
+}
+
+
+apply plugin: 'invariants-plugin'
+daikonConfig {
+    pattern = "^com\\.example\\.getty\\."
+}
+
