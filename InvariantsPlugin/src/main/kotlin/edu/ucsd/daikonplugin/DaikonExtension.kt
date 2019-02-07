@@ -15,6 +15,7 @@ open class DaikonExtension(objects: ObjectFactory) {
     val pattern: Property<String> = objects.property(String::class.java)
     val daikonOutputDirectory : DirectoryProperty = objects.directoryProperty()
     val callgraphOutputDirectory : DirectoryProperty = objects.directoryProperty()
+    val invariantsOutputDirectory : DirectoryProperty = objects.directoryProperty()
 
     val daikonInstallationPath: Property<String> = objects.property(String::class.java)
     val daikonJarFileName: Property<String> = objects.property(String::class.java)

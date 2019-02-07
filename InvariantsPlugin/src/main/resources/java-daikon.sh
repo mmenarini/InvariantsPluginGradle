@@ -1,6 +1,6 @@
 #!/bin/bash
 
-OUTPUT_DIR="@OUTPUT_DIR@"
+OUTPUT_FILE="@OUTPUT_FILE@"
 DAIKON_JAR="@DAIKON_JAR@"
 PATTERN="@PATTERN@"
 
@@ -56,7 +56,7 @@ echo "POST: "${POST[@]}""
 
 #echo "Effective command: java "${PRE[@]}" daikon.Chicory --premain=$DAIKONDIR/daikon.jar --daikon-online --daikon-args="--no_text_output -o test.inv.gz" --ppt-select-pattern="^com\.example\.getty\." "${POST[@]}""
 
-/usr/lib/jvm/java-8-oracle/bin/java "${PRE[@]}" daikon.Chicory --daikon-online --daikon-args="--no_text_output -o ${OUTPUT_DIR}/test.inv.gz" --ppt-select-pattern="${PATTERN}" "${POST[@]}"
+/usr/lib/jvm/java-8-oracle/bin/java "${PRE[@]}" daikon.Chicory --daikon-online --daikon-args="--no_text_output -o ${OUTPUT_FILE}" --ppt-select-pattern="${PATTERN}" "${POST[@]}"
  
 #/usr/lib/jvm/java-8-oracle/bin/java "${PRE[@]}" daikon.Chicory --debug --daikon-online --daikon-args="--no_text_output -o test.inv.gz" --ppt-select-pattern="^com\.example\.getty\." "${POST[@]}"
  
