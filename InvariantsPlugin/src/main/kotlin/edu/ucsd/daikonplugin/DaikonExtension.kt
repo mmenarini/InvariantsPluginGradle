@@ -12,13 +12,16 @@ open class DaikonExtension(objects: ObjectFactory) {
     private val DEFAULT_DAIKON_DIR = System.getenv("DAIKONDIR")
     private val DEFAULT_DAIKON_JAR = "daikon.jar"
 
-    val pattern: Property<String> = objects.property(String::class.java)
-    val daikonOutputDirectory : DirectoryProperty = objects.directoryProperty()
-    val callgraphOutputDirectory : DirectoryProperty = objects.directoryProperty()
-    val invariantsOutputDirectory : DirectoryProperty = objects.directoryProperty()
+    val sourceFile = objects.fileProperty()
+    val sourceFileLineNumber = objects.property(Int::class.java)
 
-    val daikonInstallationPath: Property<String> = objects.property(String::class.java)
-    val daikonJarFileName: Property<String> = objects.property(String::class.java)
+    val pattern = objects.property(String::class.java)
+    val daikonOutputDirectory = objects.directoryProperty()
+    val callgraphOutputDirectory = objects.directoryProperty()
+    val invariantsOutputDirectory = objects.directoryProperty()
+
+    val daikonInstallationPath = objects.property(String::class.java)
+    val daikonJarFileName = objects.property(String::class.java)
 
     fun getDaikonJarPath():Path {
         return try {

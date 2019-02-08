@@ -18,7 +18,7 @@ open class Daikon : DefaultTask() {
     val daikonPattern: Property<String> = project.objects.property(String::class.java)
 
     @OutputFile
-    @Optional
+    //@Optional
     var outputFile = project.objects.fileProperty()
 
     @TaskAction

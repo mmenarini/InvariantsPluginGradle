@@ -26,7 +26,9 @@ repositories {
 dependencies {
     compile("org.jetbrains.kotlin:kotlin-reflect:1.3.20")
     compile(kotlin("stdlib-jdk8"))
-    compileOnly(project.layout.files("/home/mmenarini/Dev/daikon/daikon.jar"))
+    compile("com.github.javaparser:javaparser-symbol-solver-core:3.11.0")
+    compileOnly(project.layout.files("/home/mmenarini/daikon-5.7.2/daikon.jar"))
+    //compileOnly(project.layout.files("/home/mmenarini/Dev/daikon/daikon.jar"))
 }
 
 

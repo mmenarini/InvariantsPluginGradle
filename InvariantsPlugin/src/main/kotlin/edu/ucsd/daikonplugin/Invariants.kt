@@ -22,7 +22,7 @@ open class Invariants @Inject constructor(val workerExecutor: WorkerExecutor): D
     val inputFile = project.objects.fileProperty()
 
     @OutputDirectory
-    @Optional
+    //@Optional
     var outputDirectory : DirectoryProperty = project.objects.directoryProperty()
 
     @TaskAction
