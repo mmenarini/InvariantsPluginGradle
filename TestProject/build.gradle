@@ -1,6 +1,15 @@
 buildscript {
     repositories {
-        mavenCentral()
+        //mavenCentral()
+        maven{
+            url = uri("https://soot-build.cs.uni-paderborn.de/nexus/repository/swt-upb/")
+        }
+        jcenter {
+            content {
+                // this repository contains everything BUT artifacts with group starting with "my.company"
+                excludeGroupByRegex("ca\\.mcgill.*")
+            }
+        }
     }
     dependencies {
         classpath("edu.ucsd.invariants:InvariantsPlugin:0.1-beta")

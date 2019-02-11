@@ -20,7 +20,15 @@ gradlePlugin {
 }
 
 repositories {
-    mavenCentral()
+    maven{
+        url = uri("https://soot-build.cs.uni-paderborn.de/nexus/repository/swt-upb/")
+    }
+    jcenter {
+        content {
+            // this repository contains everything BUT artifacts with group starting with "my.company"
+            excludeGroupByRegex("ca\\.mcgill.*")
+        }
+    }
 }
 
 dependencies {
@@ -28,6 +36,7 @@ dependencies {
     compile(kotlin("stdlib-jdk8"))
     compile("com.github.javaparser:javaparser-symbol-solver-core:3.11.0")
     compileOnly(project.layout.files("/home/mmenarini/daikon-5.7.2/daikon.jar"))
+    compile("ca.mcgill.sable:soot:3.2.0")
     //compileOnly(project.layout.files("/home/mmenarini/Dev/daikon/daikon.jar"))
 }
 
