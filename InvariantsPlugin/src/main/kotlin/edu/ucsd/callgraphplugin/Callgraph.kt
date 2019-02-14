@@ -107,7 +107,7 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
             //sootConfig.resolve()
 
             workerExecutor.submit(CallGraphWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.CLASSLOADER
+                it.isolationMode = IsolationMode.PROCESS
                 // Constructor parameters for the unit of work implementation
                 it.params(
                         classesFiles,
@@ -115,7 +115,7 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
                         realCP,
                         outputDirectory.get().asFile.absolutePath)
                 it.classpath(sootConfig)
-                //it.forkOptions.maxHeapSize = "4G"
+                it.forkOptions.maxHeapSize = "4G"
             }
             workerExecutor.await()
             project.repositories.clear()

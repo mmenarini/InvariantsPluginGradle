@@ -40,7 +40,7 @@ open class Daikon : DefaultTask() {
             test.outputs.upToDateWhen { false }
             test.maxParallelForks  = 1
             test.setForkEvery(0)
-
+            test.ignoreFailures = true
             if (callGraphDirectory.isPresent) {
                 val tests=callGraphDirectory.asFile.get().resolve("testSet.txt").readLines()
                 test.setTestNameIncludePatterns(tests)
