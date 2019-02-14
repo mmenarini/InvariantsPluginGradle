@@ -74,9 +74,11 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
 
             logger.info("Run test subset analysis for ${method.resolve().qualifiedSignature}")
             val methodName="<${method.resolve().declaringType().qualifiedName}: " +
-                           "${(method.type.resolve() as ReferenceTypeImpl).qualifiedName} " +
+                           "${method.type.resolve().describe()} " +
                            "${method.name}" +
-                           "(${method.resolve().qualifiedSignature.substringAfter("(")}>"
+                           "(${method.resolve().qualifiedSignature
+                                   .substringAfter("(")
+                                   .split(", ").joinToString(",")}>"
             runSootGC(methodName)
 
         } else {
