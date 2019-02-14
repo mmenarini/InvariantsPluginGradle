@@ -1,6 +1,7 @@
 package edu.ucsd.daikonplugin
 
 import java.lang.StringBuilder
+import java.lang.reflect.Method
 import java.nio.file.Files
 import java.nio.file.Paths
 import javax.inject.Inject
@@ -52,9 +53,13 @@ open class InvariantsWorker @Inject constructor(
 
         val outputFilePath = outputDirectory.resolve("result.inv").toAbsolutePath()
 
-        daikon.PrintInvariants.main(arrayOf("--output",
-                outputFilePath.toString(),
-                this.inputFile))
+        var printInvariants =  Class.forName("daikon.PrintInvariants")
+        var printInvariantsMain = printInvariants.getMethod("main", Array<String>::class.java)
+        printInvariantsMain.invoke(null,
+                arrayOf("--output", outputFilePath.toString(), this.inputFile))
+//        daikon.PrintInvariants.main(arrayOf("--output",
+//                outputFilePath.toString(),
+//                this.inputFile))
 
         outputFilePath.toFile().bufferedReader().use { input ->
             input.useLines { sequence ->

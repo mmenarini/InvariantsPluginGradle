@@ -1,11 +1,8 @@
 package edu.ucsd.daikonplugin
 
-import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.model.ObjectFactory
-import org.gradle.api.provider.Property
 import java.nio.file.Path
 import java.nio.file.Paths
-
 
 
 open class DaikonExtension(objects: ObjectFactory) {

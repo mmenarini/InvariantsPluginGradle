@@ -21,7 +21,7 @@ public class GStackTest extends TestCase {
 //		assertEquals(2, gstack.load());
 		gstack.load();
 	}
-	
+
 	public void testPop() {
 		gstack.push(3);
 //		assertEquals(3, gstack.pop());

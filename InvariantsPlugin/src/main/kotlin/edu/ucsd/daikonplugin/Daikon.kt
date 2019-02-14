@@ -14,23 +14,38 @@ open class Daikon : DefaultTask() {
     lateinit var additionalClassPath: FileCollection
     @Internal
     lateinit var daikonJarPath: String
+
     @Input
-    val daikonPattern: Property<String> = project.objects.property(String::class.java)
+    @Optional
+    val daikonPattern = project.objects.property(String::class.java)
+
+    @InputDirectory
+    @Optional
+    val callGraphDirectory = project.objects.directoryProperty()
 
     @OutputFile
-    //@Optional
     var outputFile = project.objects.fileProperty()
 
     @TaskAction
     internal fun doStuff() {
-        //val dep  = project.dependencies.
-        //project.dependencies.add("testImplementation",FileCollection(File("/home/mmenarini/Dev/daikon/daikon.jar"))
-        if (!daikonPattern.isPresent)
-            throw Exception("Cannot run daikon without a daikonPattern specified")
-        project.tasks.withType(Test::class.java).configureEach { test ->
+        var selectedPattern=""
+        if (daikonPattern.isPresent) {
+            selectedPattern=daikonPattern.get()
+        } else if (callGraphDirectory.isPresent) {
+            selectedPattern=callGraphDirectory.asFile.get().resolve("path.txt").readText()
+        } else
+            throw Exception("Cannot run daikon without a daikonPattern or a callgraph directory specified")
 
+        project.tasks.withType(Test::class.java).configureEach { test ->
+            test.outputs.upToDateWhen { false }
             test.maxParallelForks  = 1
             test.setForkEvery(0)
+
+            if (callGraphDirectory.isPresent) {
+                val tests=callGraphDirectory.asFile.get().resolve("testSet.txt").readLines()
+                test.setTestNameIncludePatterns(tests)
+
+            }
 
             val outputDirectoryPath = outputFile.get().asFile.toPath().parent
             val outputFilePath = outputFile.get().asFile.toPath()
@@ -48,7 +63,7 @@ open class Daikon : DefaultTask() {
                         else if (line.contains("@DAIKON_JAR@"))
                             output.println(line.replace("@DAIKON_JAR@", daikonJarPath))
                         else if (line.contains("@PATTERN@"))
-                            output.println(line.replace("@PATTERN@", daikonPattern.get()))
+                            output.println(line.replace("@PATTERN@", selectedPattern))
                         else
                             output.println(line)
                     }
