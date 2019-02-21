@@ -29,22 +29,23 @@ open class CallGraphWorkerSoot @Inject constructor(
 
         applicationClasses.split(":")
                 .forEach { args.addAll(arrayOf("-process-dir", it)) }
-
-        PackManager.v().getPack("wjtp").add(
-                Transform("wjtp.myTransform", object : SceneTransformer() {
-                    override fun internalTransform(phaseName: String?, options: MutableMap<String, String>?) {
+        try {
+            PackManager.v().getPack("wjtp").add(
+                    Transform("wjtp.myTransform", object : SceneTransformer() {
+                        override fun internalTransform(phaseName: String?, options: MutableMap<String, String>?) {
                             val targetMethod = Scene.v().grabMethod(methodName)
-                            if (targetMethod==null) {
+                            if (targetMethod == null) {
                                 //Not in a method lets look for a class
-                                val targetClass= Scene.v().getSootClass(methodName.substringAfter('<').substringBefore(':'))
-                                if (targetClass==null)
+                                val targetClass = Scene.v().getSootClass(methodName.substringAfter('<').substringBefore(':'))
+                                if (targetClass == null)
                                     throw Exception("Target method nor class were found. The signature used was $methodName.")
                                 else
                                     processClassCallGraph(targetClass)
                             } else
                                 processMethodCallGraph(targetMethod)
-                    }
-                }))
+                        }
+                    }))
+        }catch (ex:Exception) {}
         soot.Main.main(args.toTypedArray())
     }
 

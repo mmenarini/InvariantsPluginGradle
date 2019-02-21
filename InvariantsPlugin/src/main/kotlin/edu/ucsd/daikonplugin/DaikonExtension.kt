@@ -11,6 +11,7 @@ open class DaikonExtension(objects: ObjectFactory) {
 
     val sourceFile = objects.fileProperty()
     val sourceFileLineNumber = objects.property(Int::class.java)
+    val methodSignature = objects.property(String::class.java)
 
     val pattern = objects.property(String::class.java)
     val daikonOutputDirectory = objects.directoryProperty()
@@ -22,7 +23,7 @@ open class DaikonExtension(objects: ObjectFactory) {
 
     fun getDaikonJarPath():Path {
         return try {
-            if (!daikonInstallationPath.isPresent && DEFAULT_DAIKON_DIR == "")
+            if (!daikonInstallationPath.isPresent && (DEFAULT_DAIKON_DIR.equals("") || DEFAULT_DAIKON_DIR == null ))
                 throw Exception("Cannot run daikon because environment variable DAIKONDIR and property daikonInstallationPath not set. " +
                         "You need to set at least one of them to be able to find daikon.jar")
             val daikonDir = if (!daikonInstallationPath.isPresent) DEFAULT_DAIKON_DIR else daikonInstallationPath.get()

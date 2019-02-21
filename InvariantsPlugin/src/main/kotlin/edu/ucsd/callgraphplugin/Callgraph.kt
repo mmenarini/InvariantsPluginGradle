@@ -17,6 +17,7 @@ import org.gradle.api.tasks.*
 import org.gradle.api.tasks.testing.Test
 import org.gradle.workers.IsolationMode
 import org.gradle.workers.WorkerExecutor
+import java.io.File
 import java.net.URI
 import java.nio.file.Files
 import javax.inject.Inject
@@ -25,9 +26,15 @@ import javax.inject.Inject
 open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
 
     @InputFile
+    @Optional
     val sourceFile = project.objects.fileProperty()
     @Input
+    @Optional
     val lineNumber = project.objects.property(Int::class.java)
+
+    @Input
+    @Optional
+    val methodSignature = project.objects.property(String::class.java)
 
     @Internal
     lateinit var additionalClassPath: FileCollection
@@ -37,24 +44,33 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
     val outputDirectory: DirectoryProperty = project.objects.directoryProperty()
 
     @TaskAction
-    internal fun graph() {
-        val sourceFolders =  project.convention.getPlugin(JavaPluginConvention::class.java).getSourceSets()
-
+    internal fun callgraph() {
         Files.createDirectories(outputDirectory.get().asFile.toPath())
 
+        if(sourceFile.isPresent && lineNumber.isPresent) {
+            val signature = computeMethodSignature(sourceFile.get().asFile, lineNumber.get())
+            runSootGC(signature)
+        } else if (methodSignature.isPresent) {
+            runSootGC(methodSignature.get())
+        } else
+          logger.warn("No method or file/line provided did not run the Callgraph analysis")
+    }
+
+    private fun computeMethodSignature(fileName: File, line: Int) : String {
         logger.info("Creating Type Resolvers")
         val reflectionTypeSolver = ReflectionTypeSolver()
         reflectionTypeSolver.parent = reflectionTypeSolver
         val combinedSolver = CombinedTypeSolver()
         combinedSolver.add(reflectionTypeSolver)
 
+        val sourceFolders =  project.convention.getPlugin(JavaPluginConvention::class.java).getSourceSets()
         sourceFolders.forEach { sourceFolder ->
             sourceFolder.allJava.sourceDirectories
-                .filter{it.exists()}
-                .forEach{combinedSolver.add(JavaParserTypeSolver(it))}
+                    .filter{it.exists()}
+                    .forEach{combinedSolver.add(JavaParserTypeSolver(it))}
             sourceFolder.compileClasspath.asFileTree
-                .filter { it.isFile && it.name.endsWith(".jar")}
-                .forEach{combinedSolver.add(JarTypeSolver(it))}
+                    .filter { it.isFile && it.name.endsWith(".jar")}
+                    .forEach{combinedSolver.add(JarTypeSolver(it))}
         }
 
         val symbolSolver = JavaSymbolSolver(combinedSolver)
@@ -74,19 +90,17 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
 
             logger.info("Run test subset analysis for ${method.resolve().qualifiedSignature}")
             val methodName="<${method.resolve().declaringType().qualifiedName}: " +
-                           "${method.type.resolve().describe()} " +
-                           "${method.name}" +
-                           "(${method.resolve().qualifiedSignature
-                                   .substringAfter("(")
-                                   .split(", ").joinToString(",")}>"
-            runSootGC(methodName)
-
+                    "${method.type.resolve().describe()} " +
+                    "${method.name}" +
+                    "(${method.resolve().qualifiedSignature
+                            .substringAfter("(")
+                            .split(", ").joinToString(",")}>"
+            return methodName
         } else {
             logger.info("No method found in file ${sourceFile.get()} for line ${lineNumber.get()}")
+            return ""
         }
-
     }
-
     private fun runSootGC(methodName: String) {
         project.tasks.withType(Test::class.java).forEach { test ->
             val realCP = test.classpath.filter {

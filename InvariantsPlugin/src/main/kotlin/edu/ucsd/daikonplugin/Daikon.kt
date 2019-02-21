@@ -1,6 +1,8 @@
 package edu.ucsd.daikonplugin
 
+import org.gradle.api.Action
 import org.gradle.api.DefaultTask
+import org.gradle.api.Task
 import org.gradle.api.file.FileCollection
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
@@ -14,6 +16,8 @@ open class Daikon : DefaultTask() {
     lateinit var additionalClassPath: FileCollection
     @Internal
     lateinit var daikonJarPath: String
+    @Internal
+    lateinit var afterDaikonTask: Task
 
     @Input
     @Optional
@@ -27,7 +31,9 @@ open class Daikon : DefaultTask() {
     var outputFile = project.objects.fileProperty()
 
     @TaskAction
-    internal fun doStuff() {
+    internal fun daikon() {
+        afterDaikonTask.outputs.upToDateWhen { false }
+
         var selectedPattern=""
         if (daikonPattern.isPresent) {
             selectedPattern=daikonPattern.get()

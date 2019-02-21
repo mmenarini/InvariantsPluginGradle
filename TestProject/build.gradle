@@ -35,7 +35,8 @@ tasks.wrapper {
 }
 
 apply plugin: 'invariants-plugin'
-//daikonConfig {
+daikonConfig {
+    daikonInstallationPath.set("/home/mmenarini/Dev/daikon")
 //    daikonPattern.set("^com\\.example\\.getty\\.")
-//}
+}
 

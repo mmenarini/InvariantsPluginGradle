@@ -29,7 +29,7 @@ open class Invariants @Inject constructor(val workerExecutor: WorkerExecutor): D
     var outputDirectory : DirectoryProperty = project.objects.directoryProperty()
 
     @TaskAction
-    internal fun doStuff() {
+    internal fun invariants() {
         var  selectedPattern = when {
             daikonPattern.isPresent -> daikonPattern.get()
             callGraphDirectory.isPresent -> callGraphDirectory.asFile.get().resolve("path.txt").readText()

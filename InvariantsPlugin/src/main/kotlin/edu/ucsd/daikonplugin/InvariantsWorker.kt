@@ -4,6 +4,7 @@ import java.lang.StringBuilder
 import java.lang.reflect.Method
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 import javax.inject.Inject
 
 
@@ -14,31 +15,57 @@ open class InvariantsWorker @Inject constructor(
     val outputDirectory: String) : Runnable {
 
     private val splitter = "==========================================================================="
-    private fun ExtractMethodName(s:String):String{
+    private fun ExtractMethodName(s:String):String {
         return s.substringBefore(":::")
     }
-    private fun FileSplitter(lines: Sequence<String>) : Sequence<String> {
-        var tmp = StringBuilder("")
-        var method = ""
-        var lastLineSplit = false
+    private fun isClass(s:String):Boolean {
+        return s.endsWith("CLASS", true)
+    }
+    private fun isObject(s:String):Boolean {
+        return s.endsWith("OBJECT", true)
+    }
+
+    private fun FileBlockSplitter(lines: Sequence<String>) : Sequence<List<String>> {
+        val tmpLst = LinkedList<String>()
         return sequence {
             lines.forEach {
-                if (lastLineSplit) {
-                    lastLineSplit = false
-                    val curMethod = ExtractMethodName(it)
-                    if(!curMethod.equals(method)) {
-                        if (tmp.isNotEmpty())
-                            yield(tmp.toString())
-                        tmp.clear()
+                if (it == splitter) {
+                    if (tmpLst.isNotEmpty()) {
+                        yield(tmpLst)
+                        tmpLst.clear()
                     }
-                    method=curMethod
+                } else {
+                    tmpLst.addLast(it)
                 }
-                if (it.equals(splitter)) {
-                    lastLineSplit=true
-                }
-                else
-                    tmp.appendln(it)
             }
+            yield(tmpLst)
+        }
+    }
+
+    private fun FileSplitter(lines: Sequence<String>) : Sequence<String> {
+        val tmp = StringBuilder()
+        var method = ""
+        var isObject = false
+        var isClass = false
+        var lastMethod = ""
+        var lastIsObject = false
+        var lastIsClass = false
+        return sequence {
+            FileBlockSplitter(lines).forEach {
+                val firstLine = it.first()
+                method = ExtractMethodName(firstLine)
+                if (lastMethod == method) {
+                    tmp.appendln(splitter)
+                } else if (lastMethod=="") {
+                } else {
+                    yield(tmp.toString())
+                    tmp.clear()
+                }
+                tmp.appendln(it.joinToString(System.lineSeparator()))
+                lastMethod=method
+            }
+            if (tmp.isNotEmpty())
+                yield(tmp.toString())
         }
     }
 
