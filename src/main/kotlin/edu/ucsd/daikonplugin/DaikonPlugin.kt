@@ -26,10 +26,10 @@ open class DaikonPlugin @Inject constructor(
             val extension = project.extensions.create("daikonConfig",
                     DaikonExtension::class.java, project.objects)
             val testTasks = project.tasks.withType(Test::class.java)
+
             // Register & Configure Callgraph
             val callgraphTask = project.tasks.register("callgraph", Callgraph::class.java) { task ->
                 task.dependsOn("testClasses")
-
                 if (project.hasProperty("methodSignature")) {
                     task.methodSignature.set(project.properties["methodSignature"].toString())
                 } else if (extension.methodSignature.isPresent){
@@ -63,8 +63,10 @@ open class DaikonPlugin @Inject constructor(
             // Register Daikon
             val daikonTask = project.tasks.register("daikon", Daikon::class.java)
             // Register & Configure cleanCallgraph
-            val daikonAfterTestTask = project.tasks.create("daikonAfterTest") {
+            val daikonAfterTestTask = project.tasks.register("daikonAfterTest", DaikonAfterTest::class.java) {
                 it.mustRunAfter(testTasks)
+                val stdDir = project.layout.projectDirectory.dir("${project.buildDir}/daikon")
+                it.outputFile.set(extension.daikonOutputDirectory.getOrElse(stdDir).file("test.inv.gz"))
             }
             // Register & Configure cleanDaikon
             project.tasks.create("cleanDaikon") {
@@ -95,7 +97,7 @@ open class DaikonPlugin @Inject constructor(
             // Configure Daikon
             daikonTask.configure { task ->
                 task.finalizedBy(testTasks)
-                task.afterDaikonTask = daikonAfterTestTask
+                task.afterDaikonTask = daikonAfterTestTask.get()
 
                 val stdDir = project.layout.projectDirectory.dir("${project.buildDir}/daikon")
                 task.outputFile.set(extension.daikonOutputDirectory.getOrElse(stdDir).file("test.inv.gz"))

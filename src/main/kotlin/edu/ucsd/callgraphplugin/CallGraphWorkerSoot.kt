@@ -5,6 +5,7 @@ import soot.tagkit.AnnotationTag
 import soot.tagkit.VisibilityAnnotationTag
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.*
 import javax.inject.Inject
 
 
@@ -15,6 +16,7 @@ open class CallGraphWorkerSoot @Inject constructor(
         val outputDirectory: String) : Runnable {
 
     override fun run() {
+        soot.G.reset()
         Files.createDirectories(Paths.get(outputDirectory))
         val args = mutableListOf(//"-pp",
                 "-w", "-allow-phantom-refs", "-ice",
@@ -30,8 +32,13 @@ open class CallGraphWorkerSoot @Inject constructor(
         applicationClasses.split(":")
                 .forEach { args.addAll(arrayOf("-process-dir", it)) }
         try {
-            PackManager.v().getPack("wjtp").add(
-                    Transform("wjtp.myTransform", object : SceneTransformer() {
+            val wjtp = PackManager.v().getPack("wjtp")
+            System.err.println("Removing old TestFinder")
+            wjtp.removeAll { true }
+            //wjtp.remove("wjtp.TestFinder")
+            System.err.println("Removing old TestFinder Done")
+            wjtp.add(
+                    Transform("wjtp.TestFinder", object : SceneTransformer() {
                         override fun internalTransform(phaseName: String?, options: MutableMap<String, String>?) {
                             val targetMethod = Scene.v().grabMethod(methodName)
                             if (targetMethod == null) {
@@ -45,7 +52,10 @@ open class CallGraphWorkerSoot @Inject constructor(
                                 processMethodCallGraph(targetMethod)
                         }
                     }))
-        }catch (ex:Exception) {}
+        }catch (ex:Exception) {
+            System.err.println(ex.message)
+            ex.printStackTrace()
+        }
         soot.Main.main(args.toTypedArray())
     }
 
@@ -57,7 +67,7 @@ open class CallGraphWorkerSoot @Inject constructor(
         methodsToProcess.addAll(targetClass.methods)
         while (methodsToProcess.isNotEmpty()) {
             methodsProcessed.addAll(methodsToProcess)
-            methodsToProcess.forEach {
+            methodsToProcess.toList().forEach {
                 Scene.v().callGraph.edgesInto(it).forEach {
                     methodsToProcess.add(it.src)
                     if (isTest(it.src.method())) {
@@ -89,7 +99,7 @@ open class CallGraphWorkerSoot @Inject constructor(
         methodsToProcess.add(targetMethod)
         while (methodsToProcess.isNotEmpty()) {
             methodsProcessed.addAll(methodsToProcess)
-            methodsToProcess.forEach {
+            methodsToProcess.toList().forEach {
                 Scene.v().callGraph.edgesInto(it).forEach {
                     methodsToProcess.add(it.src)
                     if (isTest(it.src.method())) {

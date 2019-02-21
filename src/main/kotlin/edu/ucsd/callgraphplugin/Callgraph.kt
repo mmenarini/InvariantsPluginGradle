@@ -103,12 +103,15 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
     }
     private fun runSootGC(methodName: String) {
         project.tasks.withType(Test::class.java).forEach { test ->
+            System.err.println("Test Classpath = ${test.classpath.asPath}")
             val realCP = test.classpath.filter {
                 it.exists()
             }.asPath
+            System.err.println("RealCP = $realCP")
             val classesFiles = test.classpath.filter {
                 it.exists() && it.isDirectory
             }.asPath
+            System.err.println("classesFiles = $classesFiles")
             val tmpRepos = project.repositories.toList()
             project.repositories.clear()
             project.repositories.add(project.repositories.maven{ it.url=
