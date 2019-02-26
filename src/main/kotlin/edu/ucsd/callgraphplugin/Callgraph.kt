@@ -9,9 +9,12 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
+import edu.ucsd.daikonplugin.Daikon
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileCollection
+import org.gradle.api.file.RegularFile
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.testing.Test
@@ -24,7 +27,8 @@ import javax.inject.Inject
 
 
 open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
-
+    @InputFiles
+    val classFiles = project.objects.property(FileCollection::class.java)
     @InputFile
     @Optional
     val sourceFile = project.objects.fileProperty()
@@ -38,6 +42,8 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
 
     @Internal
     lateinit var additionalClassPath: FileCollection
+    @Internal
+    lateinit var daikonTaskProvider: TaskProvider<Daikon>
 
     @OutputDirectory
     //@Optional
@@ -50,8 +56,10 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
         if(sourceFile.isPresent && lineNumber.isPresent) {
             val signature = computeMethodSignature(sourceFile.get().asFile, lineNumber.get())
             runSootGC(signature)
+            daikonTaskProvider.get().outputs.upToDateWhen { false }
         } else if (methodSignature.isPresent) {
             runSootGC(methodSignature.get())
+            daikonTaskProvider.get().outputs.upToDateWhen { false }
         } else
           logger.warn("No method or file/line provided did not run the Callgraph analysis")
     }

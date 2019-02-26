@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/edu.ucsd.dsproj.dsproj.iml" filepath="$PROJECT_DIR$/.idea/modules/edu.ucsd.dsproj.dsproj.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/edu.ucsd.dsproj.dsproj.main.iml" filepath="$PROJECT_DIR$/.idea/modules/edu.ucsd.dsproj.dsproj.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/edu.ucsd.dsproj.dsproj.test.iml" filepath="$PROJECT_DIR$/.idea/modules/edu.ucsd.dsproj.dsproj.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/495801064/edu.ucsd.invariants.InvariantsPlugin.iml" filepath="$PROJECT_DIR$/.idea/modules/495801064/edu.ucsd.invariants.InvariantsPlugin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/495801064/edu.ucsd.invariants.InvariantsPlugin.main.iml" filepath="$PROJECT_DIR$/.idea/modules/495801064/edu.ucsd.invariants.InvariantsPlugin.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/495801064/edu.ucsd.invariants.InvariantsPlugin.test.iml" filepath="$PROJECT_DIR$/.idea/modules/495801064/edu.ucsd.invariants.InvariantsPlugin.test.iml" />
+    </modules>
+  </component>
+</project>

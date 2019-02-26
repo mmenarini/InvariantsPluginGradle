@@ -5,9 +5,11 @@ import org.apache.tools.ant.TaskAdapter
 import org.gradle.api.*
 import org.gradle.api.file.FileCollection
 import org.gradle.api.plugins.JavaPlugin
+import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.testing.Test
 import org.gradle.process.internal.worker.child.WorkerProcessClassPathProvider
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import javax.inject.Inject
@@ -27,9 +29,22 @@ open class DaikonPlugin @Inject constructor(
                     DaikonExtension::class.java, project.objects)
             val testTasks = project.tasks.withType(Test::class.java)
 
+            // Register Invariants
+            val invariantsTask = project.tasks.register("invariants", Invariants::class.java)
+            // Register Daikon
+            val daikonTask = project.tasks.register("daikon", Daikon::class.java)
+
             // Register & Configure Callgraph
             val callgraphTask = project.tasks.register("callgraph", Callgraph::class.java) { task ->
+                task.dependsOn("classes")
                 task.dependsOn("testClasses")
+                task.daikonTaskProvider = daikonTask
+                val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
+                val emptyCollection: Set<File> = HashSet<File>()
+                val files =
+                jpc.sourceSets.fold(emptyCollection) { acc,
+                                                       e -> acc.plus(e.output.classesDirs.files) }
+                task.classFiles.set(project.files(files))
                 if (project.hasProperty("methodSignature")) {
                     task.methodSignature.set(project.properties["methodSignature"].toString())
                 } else if (extension.methodSignature.isPresent){
@@ -58,15 +73,14 @@ open class DaikonPlugin @Inject constructor(
                 val stdFolder = project.layout.projectDirectory.dir("${project.buildDir}/callgraph")
                 task.outputDirectory.set(extension.callgraphOutputDirectory.getOrElse(stdFolder))
             }
-            // Register Invariants
-            val invariantsTask = project.tasks.register("invariants", Invariants::class.java)
-            // Register Daikon
-            val daikonTask = project.tasks.register("daikon", Daikon::class.java)
+
             // Register & Configure cleanCallgraph
             val daikonAfterTestTask = project.tasks.register("daikonAfterTest", DaikonAfterTest::class.java) {
                 it.mustRunAfter(testTasks)
+                it.dependsOn(daikonTask)
                 val stdDir = project.layout.projectDirectory.dir("${project.buildDir}/daikon")
-                it.outputFile.set(extension.daikonOutputDirectory.getOrElse(stdDir).file("test.inv.gz"))
+                it.inputFile.set(extension.daikonOutputDirectory.getOrElse(stdDir).file("test.inv.gz"))
+                it.outputFile.set(extension.daikonOutputDirectory.getOrElse(stdDir).file("result.inv.gz"))
             }
             // Register & Configure cleanDaikon
             project.tasks.create("cleanDaikon") {
@@ -83,7 +97,7 @@ open class DaikonPlugin @Inject constructor(
             // Configure Invariants
             invariantsTask.configure { task ->
                 task.dependsOn(daikonAfterTestTask)
-                task.inputFile.set(daikonTask.get().outputFile)
+                task.inputFile.set(daikonAfterTestTask.get().outputFile)
                 task.daikonJarPath = extension.getDaikonJarPath().toAbsolutePath().toString()
                 if (project.hasProperty("daikonPattern"))
                     task.daikonPattern.set(project.property("daikonPattern").toString())
