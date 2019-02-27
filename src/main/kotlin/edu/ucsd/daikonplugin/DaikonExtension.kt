@@ -1,6 +1,7 @@
 package edu.ucsd.daikonplugin
 
 import org.gradle.api.model.ObjectFactory
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -22,20 +23,24 @@ open class DaikonExtension(objects: ObjectFactory) {
     val daikonJarFileName = objects.property(String::class.java)
 
     fun getDaikonJarPath():Path {
-        return try {
-            if (!daikonInstallationPath.isPresent && (DEFAULT_DAIKON_DIR.equals("") || DEFAULT_DAIKON_DIR == null ))
+        try {
+            val daikonJar = if (!daikonJarFileName.isPresent) DEFAULT_DAIKON_JAR else daikonJarFileName.get()
+            if (!daikonInstallationPath.isPresent && (DEFAULT_DAIKON_DIR == null || DEFAULT_DAIKON_DIR == "")) {
+                //Search in /opt/daikon and ~/daikon
+                if (Files.exists(Paths.get(System.getProperty("user.home")).resolve("daikon").resolve(daikonJar)))
+                    return Paths.get(System.getProperty("user.home")).resolve("daikon").resolve(daikonJar)
+                if (Files.exists(Paths.get("/opt/daikon").resolve(daikonJar)))
+                    return Paths.get("/opt/daikon").resolve(daikonJar)
                 throw Exception("Cannot run daikon because environment variable DAIKONDIR and property daikonInstallationPath not set. " +
                         "You need to set at least one of them to be able to find daikon.jar")
+            }
             val daikonDir = if (!daikonInstallationPath.isPresent) DEFAULT_DAIKON_DIR else daikonInstallationPath.get()
-            val daikonJar = if (!daikonJarFileName.isPresent) DEFAULT_DAIKON_JAR else daikonJarFileName.get()
             if (daikonDir!=null)
-                Paths.get(daikonDir).resolve(daikonJar)
-            else
-                Paths.get("")
+                return Paths.get(daikonDir).resolve(daikonJar)
         } catch(e:Exception){
             e.printStackTrace()
-            Paths.get("")
         }
+        return Paths.get("")
     }
 
 }

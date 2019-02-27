@@ -27,6 +27,13 @@ open class DaikonPlugin @Inject constructor(
         project.plugins.withType(JavaPlugin::class.java) {
             val extension = project.extensions.create("daikonConfig",
                     DaikonExtension::class.java, project.objects)
+            if (project.hasProperty("daikonJarFile")) {
+                val f = Paths.get(project.property("daikonJarFile").toString());
+                if (Files.exists(f) && !extension.daikonJarFileName.isPresent){
+                    extension.daikonJarFileName.set(f.toAbsolutePath().toString())
+                }
+            }
+
             val testTasks = project.tasks.withType(Test::class.java)
 
             // Register Invariants
