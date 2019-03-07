@@ -11,12 +11,15 @@ import java.nio.file.Files
 
 
 open class DaikonAfterTest : DefaultTask() {
+    @Internal
+    var inputFile = project.objects.fileProperty()
 
+    @OutputFile
     var outputFile = project.objects.fileProperty()
 
     @TaskAction
     internal fun daikonAfterTest() {
-        if (outputFile.isPresent && outputFile.get().asFile.exists())
-            outputFile.get().asFile.setLastModified(System.currentTimeMillis())
+        if (inputFile.isPresent && inputFile.get().asFile.exists())
+            inputFile.get().asFile.renameTo(outputFile.get().asFile)
     }
 }
