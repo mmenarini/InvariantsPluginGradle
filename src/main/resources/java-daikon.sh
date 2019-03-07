@@ -6,7 +6,7 @@ PATTERN="@PATTERN@"
 
 
 function fix_string() {
-  local -n arr=$1
+  local arr=$1
   for i in "${!arr[@]}"; do
     if [[ ${arr[$i]} == *\ * ]]; then
       arr[$i]="\"${arr[$i]}\""
