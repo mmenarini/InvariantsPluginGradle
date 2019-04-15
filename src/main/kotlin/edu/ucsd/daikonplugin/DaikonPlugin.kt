@@ -1,12 +1,9 @@
 package edu.ucsd.daikonplugin
 
-import edu.ucsd.callgraphplugin.Callgraph
-import org.apache.tools.ant.TaskAdapter
 import org.gradle.api.*
 import org.gradle.api.file.FileCollection
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.plugins.JavaPluginConvention
-import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.testing.Test
 import org.gradle.process.internal.worker.child.WorkerProcessClassPathProvider
 import java.io.File
@@ -42,9 +39,28 @@ open class DaikonPlugin @Inject constructor(
             val daikonTask = project.tasks.register("daikon", Daikon::class.java)
 
             // Register & Configure Callgraph
+            val testsDetectTask = project.tasks.register("testsDetect", Tests::class.java) { task ->
+                task.dependsOn("classes")
+                task.dependsOn("testClasses")
+
+                val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
+                val emptyCollection: Set<File> = HashSet<File>()
+                val files =
+                        jpc.sourceSets.fold(emptyCollection) { acc,
+                                                               e -> acc.plus(e.output.classesDirs.files) }
+                task.classFiles.set(project.files(files))
+
+                task.additionalClassPath = getAdditionalClassPathFiles(project, extension)
+                val stdFolder = project.layout.projectDirectory.dir("${project.buildDir}/testsDetect")
+                task.outputDirectory.set(extension.callgraphOutputDirectory.getOrElse(stdFolder))
+            }
+
+
+            // Register & Configure Callgraph
             val callgraphTask = project.tasks.register("callgraph", Callgraph::class.java) { task ->
                 task.dependsOn("classes")
                 task.dependsOn("testClasses")
+                task.dependsOn("testsDetect")
                 task.daikonTaskProvider = daikonTask
                 val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
                 val emptyCollection: Set<File> = HashSet<File>()

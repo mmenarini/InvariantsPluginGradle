@@ -1,7 +1,6 @@
-package edu.ucsd.callgraphplugin
+package edu.ucsd.daikonplugin
 
 import soot.*
-import soot.tagkit.AnnotationTag
 import soot.tagkit.VisibilityAnnotationTag
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -43,7 +42,9 @@ open class CallGraphWorkerSoot @Inject constructor(
                             val targetMethod = Scene.v().grabMethod(methodName)
                             if (targetMethod == null) {
                                 //Not in a method lets look for a class
-                                val targetClass = Scene.v().getSootClass(methodName.substringAfter('<').substringBefore(':'))
+                                val targetClass = Scene.v()
+                                        .getSootClass(methodName.substringAfter('<')
+                                                .substringBefore(':'))
                                 if (targetClass == null)
                                     throw Exception("Target method nor class were found. The signature used was $methodName.")
                                 else
@@ -110,7 +111,8 @@ open class CallGraphWorkerSoot @Inject constructor(
             methodsToProcess.removeAll(methodsProcessed)
         }
         Paths.get(outputDirectory).resolve("path.txt").toFile().printWriter().use { out ->
-            val pattern = "^${targetMethod.declaringClass.name.replace(".", "\\.")}\\.${targetMethod.name}"
+            val pattern =
+                    "^${targetMethod.declaringClass.name.replace(".", "\\.")}\\.${targetMethod.name}"
             System.out.println("Writing path.txt, will contain $pattern")
             out.println(pattern)
         }
