@@ -7,6 +7,9 @@ import java.nio.file.Paths
 import java.util.*
 import javax.inject.Inject
 import kotlin.collections.HashSet
+import soot.tagkit.AnnotationTag
+import java.lang.NullPointerException
+import kotlin.collections.ArrayList
 
 
 open class TestsWorkerSoot @Inject constructor(
@@ -27,7 +30,7 @@ open class TestsWorkerSoot @Inject constructor(
                 "-d", outputDirectory
         )
 
-        var testMethodsList = LinkedList<String>()
+        var testMethodsList = ArrayList<String>()
         var testClassesSet = HashSet<String>()
         applicationClasses.split(":")
                 .forEach { args.addAll(arrayOf("-process-dir", it)) }
@@ -42,13 +45,9 @@ open class TestsWorkerSoot @Inject constructor(
                             if (b==null) return
                             var method = b.method
                             var declClass = method?.declaringClass
-                            if(declClass==null) return
+                            if(declClass==null || method==null) return
                             if (isInstanceOfClass(declClass,"junit.framework.TestCase") ||
-                                    (b.getTag("org.junit.BeforeClass")!=null ||
-                                    b.getTag("org.junit.AfterClass")!=null||
-                                    b.getTag("org.junit.Before")!=null||
-                                    b.getTag("org.junit.After")!=null||
-                                    b.getTag("org.junit.Test")!=null))
+                                    isAnnotatedTest(method))
                             {
                                 var className = declClass?.name
                                 var methodName = method?.name
@@ -80,17 +79,37 @@ open class TestsWorkerSoot @Inject constructor(
         OutputTestMethodsList(testClassesSet, testMethodsList)
         
     }
-
-    private fun OutputTestMethodsList(testClass: Set<String>, testMethods: List<String>){
-        Paths.get(outputDirectory).resolve(Tests.OUTPUT_FILE_NAME).toFile().printWriter().use { out ->
-            System.out.println("Writing testEntryPoints.txt, will contain ${testMethods.count()} methods")
-            testClass.forEach{
-                out.println("C:${it}")
-            }
-            testMethods.forEach {
-                out.println("M:${it}")
+    private fun isAnnotatedTest(sootMethod: SootMethod): Boolean{
+        val tag = sootMethod.getTag("VisibilityAnnotationTag") as VisibilityAnnotationTag?
+        tag?.annotations?.forEach {
+            val annotationType = it.type
+            if (annotationType.equals("Landroid/webkit/JavascriptInterface;") ||
+                    annotationType.equals("Lorg/junit/BeforeClass;") ||
+                    annotationType.equals("Lorg/junit/AfterClass;") ||
+                    annotationType.equals("Lorg/junit/Before;") ||
+                    annotationType.equals("Lorg/junit/After;") ||
+                    annotationType.equals("Lorg/junit/Test;")) {
+                return true
             }
         }
+        return false
+    }
+    private fun OutputTestMethodsList(testClass: Set<String>, testMethods: List<String>){
+        System.out.println("Writing testEntryPoints.txt, will contain ${testClass.count()} classes " +
+                "and ${testMethods.count()} methods")
+        Paths.get(outputDirectory).resolve(Tests.OUTPUT_FILE_NAME).toFile().printWriter().use { out ->
+            try {
+                testClass.forEach {
+                    out.println("C:${it}")
+                }
+                testMethods.toTypedArray().forEach {
+                    out.println("M:${it}")
+                }
+            } catch(e: NullPointerException) {
+                e.printStackTrace()
+            }
+        }
+        System.out.println("testEntryPoints.txt written.")
     }
     private fun isInstanceOfClass(thisclass: SootClass, signature: String):Boolean {
         if(thisclass.name==signature)

@@ -66,14 +66,14 @@ open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : Defau
             //sootConfig.resolve()
 
             workerExecutor.submit(TestsWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.PROCESS
+                it.isolationMode = IsolationMode.CLASSLOADER // PROCESS
                 // Constructor parameters for the unit of work implementation
                 it.params(
                         classesFiles,
                         realCP,
                         outputDirectory.get().asFile.absolutePath)
                 it.classpath(sootConfig)
-                it.forkOptions.maxHeapSize = "4G"
+                //it.forkOptions.maxHeapSize = "4G"
             }
             workerExecutor.await()
             project.repositories.clear()

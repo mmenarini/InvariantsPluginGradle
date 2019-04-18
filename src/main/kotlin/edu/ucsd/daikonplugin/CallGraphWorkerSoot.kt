@@ -216,7 +216,9 @@ open class CallGraphWorkerSoot @Inject constructor(
         if (implementsTest(m.declaringClass, "junit.framework.Test"))
             return true
         return m.tags.any {
-            (it as VisibilityAnnotationTag).annotations.any { testAnnotationTag == it.type }
+            if (it is VisibilityAnnotationTag)
+                it.annotations.any { testAnnotationTag == it.type }
+            else false
         }
     }
 }
