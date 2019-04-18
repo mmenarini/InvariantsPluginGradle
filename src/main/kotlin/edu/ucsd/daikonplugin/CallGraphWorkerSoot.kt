@@ -1,6 +1,7 @@
 package edu.ucsd.daikonplugin
 
 import soot.*
+import soot.options.Options
 import soot.tagkit.VisibilityAnnotationTag
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -12,11 +13,87 @@ open class CallGraphWorkerSoot @Inject constructor(
         val applicationClasses: String,
         val methodName: String,
         val classPath: String,
+        val testEntryPoints: String,
         val outputDirectory: String) : Runnable {
 
     override fun run() {
         soot.G.reset()
         Files.createDirectories(Paths.get(outputDirectory))
+        //runLibraryMode()
+        runTestEntryPointsMode()
+    }
+
+    private fun runTestEntryPointsMode() {
+        val args = mutableListOf(//"-pp",
+                "-w", "-allow-phantom-refs", "-ice",
+                "-p", "cg", "all-reachable:false,verbose:true,library:disabled",
+                "-p", "bb", "enabled:false",
+                "-p", "tag", "enabled:false",
+                "-f", "n",
+                "-cp", classPath,
+                "-d", outputDirectory,
+                methodName.substringAfter('<').substringBefore(':')
+        )
+        Options.v().parse(args.toTypedArray())
+        var processingClasses = true
+        val entryPointsList = ArrayList<SootMethod>()
+        val entryPoints = Paths.get(testEntryPoints)
+        if (!(Files.exists(entryPoints) && Files.isRegularFile(entryPoints)))
+            throw Exception("File ${testEntryPoints} not found!")
+        entryPoints.toFile().bufferedReader().use { input ->
+            input.useLines { sequence ->
+                sequence.forEach {
+                    if (processingClasses) {
+                        if (it.startsWith("C:")) {
+                            //Still loading classes
+                            var c = Scene.v().forceResolve(it.substring(2),SootClass.BODIES)
+                            c.setApplicationClass()
+                        } else if (it.startsWith("M:")) {
+                            //Switching to Adding Methods
+                            processingClasses=false
+                            Scene.v().loadNecessaryClasses()
+                            var method = Scene.v().getMethod(it.substring(2))
+                            entryPointsList.add(method)
+                        } else {
+                            throw Exception("should not have strings not starting with C: or  M: here")
+                        }
+                    } else {
+                        if (it.startsWith("M:")) {
+                            //Adding Methods to list
+                            var method = Scene.v().getMethod(it.substring(2))
+                            entryPointsList.add(method)
+                        } else {
+                            throw Exception("should not have strings not starting with M: here")
+                        }
+                    }
+                }
+            }
+        }
+        Scene.v().entryPoints = entryPointsList
+        val wjtp = PackManager.v().getPack("wjtp")
+        wjtp.add(
+                Transform("wjtp.AllTestFinder", object : SceneTransformer() {
+                    override fun internalTransform(phaseName: String?, options: MutableMap<String, String>?) {
+                        val targetMethod = Scene.v().grabMethod(methodName)
+                        if (targetMethod == null) {
+                            //Not in a method lets look for a class
+                            val targetClass = Scene.v()
+                                    .getSootClass(methodName.substringAfter('<')
+                                            .substringBefore(':'))
+                            if (targetClass == null)
+                                throw Exception("Target method nor class were found. The signature used was $methodName.")
+                            else
+                                processClassCallGraph(targetClass)
+                        } else
+                            processMethodCallGraph(targetMethod)
+                    }
+                }))
+
+        PackManager.v().runPacks()
+
+    }
+
+    private fun runLibraryMode() {
         val args = mutableListOf(//"-pp",
                 "-w", "-allow-phantom-refs", "-ice",
                 "-p", "cg", "all-reachable:true,verbose:true,library:any-subtype",

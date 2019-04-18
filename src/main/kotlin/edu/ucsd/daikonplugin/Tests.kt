@@ -23,6 +23,9 @@ import javax.inject.Inject
 
 
 open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
+    companion object {
+        const val OUTPUT_FILE_NAME = "testEntryPoints.txt"
+    }
     @InputFiles
     val classFiles = project.objects.property(FileCollection::class.java)
 
@@ -54,20 +57,23 @@ open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : Defau
                     URI("https://soot-build.cs.uni-paderborn.de/nexus/repository/swt-upb/") })
             project.repositories.add(project.repositories.jcenter())
 
-            val sootConfig = project.configurations.create("sootconfig")
-            project.dependencies.add("sootconfig","ca.mcgill.sable:soot:3.2.0")
+            var sootConfig = project.configurations.findByName("sootconfig")
+            if (sootConfig==null) {
+                sootConfig = project.configurations.create("sootconfig")
+                project.dependencies.add("sootconfig","ca.mcgill.sable:soot:3.2.0")
+            }
             //project.dependencies.add("sootconfig","org.jetbrains.kotlin:kotlin-reflect:1.3.20")
             //sootConfig.resolve()
 
             workerExecutor.submit(TestsWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.CLASSLOADER//PROCESS
+                it.isolationMode = IsolationMode.PROCESS
                 // Constructor parameters for the unit of work implementation
                 it.params(
                         classesFiles,
                         realCP,
                         outputDirectory.get().asFile.absolutePath)
                 it.classpath(sootConfig)
-                //it.forkOptions.maxHeapSize = "4G"
+                it.forkOptions.maxHeapSize = "4G"
             }
             workerExecutor.await()
             project.repositories.clear()

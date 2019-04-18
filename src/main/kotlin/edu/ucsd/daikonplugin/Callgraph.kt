@@ -26,12 +26,14 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
     @InputFiles
     val classFiles = project.objects.property(FileCollection::class.java)
     @InputFile
+    val testEntryPoints = project.objects.fileProperty()
+
+    @InputFile
     @Optional
     val sourceFile = project.objects.fileProperty()
     @Input
     @Optional
     val lineNumber = project.objects.property(Int::class.java)
-
     @Input
     @Optional
     val methodSignature = project.objects.property(String::class.java)
@@ -122,21 +124,26 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
                     URI("https://soot-build.cs.uni-paderborn.de/nexus/repository/swt-upb/") })
             project.repositories.add(project.repositories.jcenter())
 
-            val sootConfig = project.configurations.create("sootconfig")
-            project.dependencies.add("sootconfig","ca.mcgill.sable:soot:3.2.0")
+            var sootConfig = project.configurations.findByName("sootconfig")
+            if (sootConfig==null) {
+                sootConfig = project.configurations.create("sootconfig")
+                project.dependencies.add("sootconfig","ca.mcgill.sable:soot:3.2.0")
+            }
             //project.dependencies.add("sootconfig","org.jetbrains.kotlin:kotlin-reflect:1.3.20")
             //sootConfig.resolve()
 
             workerExecutor.submit(CallGraphWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.PROCESS
+                it.isolationMode = IsolationMode.CLASSLOADER
+                //PROCESS
                 // Constructor parameters for the unit of work implementation
                 it.params(
                         classesFiles,
                         methodName,
                         realCP,
+                        testEntryPoints.get().asFile.absolutePath,
                         outputDirectory.get().asFile.absolutePath)
                 it.classpath(sootConfig)
-                it.forkOptions.maxHeapSize = "4G"
+                //it.forkOptions.maxHeapSize = "4G"
             }
             workerExecutor.await()
             project.repositories.clear()

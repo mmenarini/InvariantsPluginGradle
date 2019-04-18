@@ -6,6 +6,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
 import javax.inject.Inject
+import kotlin.collections.HashSet
 
 
 open class TestsWorkerSoot @Inject constructor(
@@ -26,7 +27,8 @@ open class TestsWorkerSoot @Inject constructor(
                 "-d", outputDirectory
         )
 
-        var testMethodsList = LinkedList<Pair<String,String>>()
+        var testMethodsList = LinkedList<String>()
+        var testClassesSet = HashSet<String>()
         applicationClasses.split(":")
                 .forEach { args.addAll(arrayOf("-process-dir", it)) }
         try {
@@ -41,7 +43,7 @@ open class TestsWorkerSoot @Inject constructor(
                             var method = b.method
                             var declClass = method?.declaringClass
                             if(declClass==null) return
-                            if (declClass.implementsInterface("junit.framework.TestCase") ||
+                            if (isInstanceOfClass(declClass,"junit.framework.TestCase") ||
                                     (b.getTag("org.junit.BeforeClass")!=null ||
                                     b.getTag("org.junit.AfterClass")!=null||
                                     b.getTag("org.junit.Before")!=null||
@@ -50,8 +52,10 @@ open class TestsWorkerSoot @Inject constructor(
                             {
                                 var className = declClass?.name
                                 var methodName = method?.name
-                                if(className!=null && methodName!=null)
-                                    testMethodsList.add(Pair(className, methodName))
+                                if(className!=null && methodName!=null) {
+                                    testClassesSet.add(className)
+                                    testMethodsList.add(method.signature)
+                                }
                             }
 
                             /*val targetMethod = Scene.v().grabMethod(methodName)
@@ -73,9 +77,28 @@ open class TestsWorkerSoot @Inject constructor(
             ex.printStackTrace()
         }
         soot.Main.main(args.toTypedArray())
+        OutputTestMethodsList(testClassesSet, testMethodsList)
         
     }
 
+    private fun OutputTestMethodsList(testClass: Set<String>, testMethods: List<String>){
+        Paths.get(outputDirectory).resolve(Tests.OUTPUT_FILE_NAME).toFile().printWriter().use { out ->
+            System.out.println("Writing testEntryPoints.txt, will contain ${testMethods.count()} methods")
+            testClass.forEach{
+                out.println("C:${it}")
+            }
+            testMethods.forEach {
+                out.println("M:${it}")
+            }
+        }
+    }
+    private fun isInstanceOfClass(thisclass: SootClass, signature: String):Boolean {
+        if(thisclass.name==signature)
+            return true
+        if(thisclass.hasSuperclass())
+            return isInstanceOfClass(thisclass.superclass, signature)
+        return false
+    }
     private fun processClassCallGraph(targetClass:SootClass) {
         System.out.println("Finding tests for class ${targetClass.name}")
         val methodsToProcess = HashSet<MethodOrMethodContext>()
