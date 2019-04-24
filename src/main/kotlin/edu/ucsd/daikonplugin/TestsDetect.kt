@@ -1,29 +1,33 @@
 package edu.ucsd.daikonplugin
 
+
+import com.github.javaparser.JavaParser
+import com.github.javaparser.ast.body.MethodDeclaration
+import com.github.javaparser.symbolsolver.JavaSymbolSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileCollection
-import org.gradle.api.file.FileType
+import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.testing.Test
-import org.gradle.work.ChangeType
-import org.gradle.work.Incremental
-import org.gradle.work.InputChanges
 import org.gradle.workers.IsolationMode
 import org.gradle.workers.WorkerExecutor
+import java.io.File
 import java.net.URI
 import java.nio.file.Files
 import javax.inject.Inject
 
 
-open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
+open class TestsDetect @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
     companion object {
         const val OUTPUT_FILE_NAME = "testEntryPoints.txt"
     }
-    @get:Incremental
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    @get:InputFiles
-    val classFiles = project.objects.fileCollection()
+    @InputFiles
+    val classFiles = project.objects.property(FileCollection::class.java)
 
     @Internal
     lateinit var additionalClassPath: FileCollection
@@ -34,8 +38,9 @@ open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : Defau
     val outputDirectory: DirectoryProperty = project.objects.directoryProperty()
 
     @TaskAction
-    internal fun tests(inputChanges: InputChanges) {
+    internal fun tests() {
         Files.createDirectories(outputDirectory.get().asFile.toPath())
+
         project.tasks.withType(Test::class.java).forEach { test ->
             System.err.println("Test Classpath = ${test.classpath.asPath}")
             val realCP = test.classpath.filter {
@@ -60,28 +65,11 @@ open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : Defau
             //project.dependencies.add("sootconfig","org.jetbrains.kotlin:kotlin-reflect:1.3.20")
             //sootConfig.resolve()
 
-            val addedClasses = ArrayList<String>()
-            val changedClasses = ArrayList<String>()
-            val removedClasses = ArrayList<String>()
-            inputChanges.getFileChanges(classFiles).forEach { change ->
-                if (change.fileType == FileType.DIRECTORY) return@forEach
-
-                if (change.changeType == ChangeType.REMOVED) {
-                    removedClasses.add(change.normalizedPath)
-                } else if (change.changeType == ChangeType.MODIFIED) {
-                    changedClasses.add(change.normalizedPath)
-                } else {
-                    addedClasses.add(change.normalizedPath)
-                }
-            }
-
             workerExecutor.submit(TestsWorkerSoot::class.java) {
                 it.isolationMode = IsolationMode.CLASSLOADER // PROCESS
                 // Constructor parameters for the unit of work implementation
                 it.params(
-                        addedClasses,
-                        changedClasses,
-                        removedClasses,
+                        classesFiles,
                         realCP,
                         outputDirectory.get().asFile.absolutePath)
                 it.classpath(sootConfig)

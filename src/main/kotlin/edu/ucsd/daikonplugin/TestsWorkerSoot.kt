@@ -13,14 +13,28 @@ import kotlin.collections.ArrayList
 
 
 open class TestsWorkerSoot @Inject constructor(
-        val applicationClasses: String,
+        val addedClasses: List<String>,
+        val changedClasses: List<String>,
+        val removedClasses: List<String>,
         val classPath: String,
         val outputDirectory: String) : Runnable {
 
+    fun getPatternDollarNum() = """\$\d+"""
+    fun getPatternDollar() = """\$"""
+    private var regexDollarNum = Regex(getPatternDollarNum())
+    private var regexDollar = Regex(getPatternDollar())
+    private fun classFilenameToClassname(name: String):String {
+        var name = name.replace("/",".")
+        if (!name.endsWith(".class")) return ""
+        name = name.substringBefore(".class")
+        name = regexDollarNum.replace(name,"")
+        name = regexDollar.replace(name,".")
+        return name
+    }
     override fun run() {
         soot.G.reset()
         Files.createDirectories(Paths.get(outputDirectory))
-        val args = mutableListOf(//"-pp",
+        val argsPar = mutableListOf(//"-pp",
                 /*"-w",*/ "-allow-phantom-refs", "-ice",
                 //"-p", "bb", "enabled:false",
                 //"-p", "tag", "enabled:false",
@@ -30,10 +44,27 @@ open class TestsWorkerSoot @Inject constructor(
                 "-d", outputDirectory
         )
 
-        var testMethodsList = ArrayList<String>()
+        var testMethodsList = mutableListOf<String>()
         var testClassesSet = HashSet<String>()
-        applicationClasses.split(":")
-                .forEach { args.addAll(arrayOf("-process-dir", it)) }
+        LoadTestMethodsList(testClassesSet, testMethodsList)
+        removedClasses.forEach {
+            val classname = classFilenameToClassname(it)
+            if (classname!="") {
+                testClassesSet.remove(classname)
+                testMethodsList.removeAll { it.startsWith("<"+classname) }
+            }
+        }
+        changedClasses.forEach {
+            val classname = classFilenameToClassname(it)
+            if (classname!="") {
+                testClassesSet.remove(classname)
+                testMethodsList.removeAll { it.startsWith("<"+classname) }
+            }
+        }
+        val args = mutableListOf<String>()
+        changedClasses.forEach { args.add(classFilenameToClassname(it)) }
+        addedClasses.forEach { args.add(classFilenameToClassname(it)) }
+        args.addAll(argsPar)
         try {
             val jtp = PackManager.v().getPack("jtp")
             //System.err.println("Removing old TestFinder")
@@ -94,6 +125,20 @@ open class TestsWorkerSoot @Inject constructor(
         }
         return false
     }
+
+    private fun LoadTestMethodsList(testClass: MutableSet<String>, testMethods: MutableList<String>){
+        val file =Paths.get(outputDirectory).resolve(Tests.OUTPUT_FILE_NAME).toFile()
+        if (!file.exists()) return
+        System.out.println("Reading testEntryPoints.txt")
+        file.readLines().forEach {
+            if (it.startsWith("C:"))
+                testClass.add(it.substring(2))
+            else if (it.startsWith("M:"))
+                testMethods.add(it.substring(2))
+        }
+        System.out.println("testEntryPoints.txt read.")
+    }
+
     private fun OutputTestMethodsList(testClass: Set<String>, testMethods: List<String>){
         System.out.println("Writing testEntryPoints.txt, will contain ${testClass.count()} classes " +
                 "and ${testMethods.count()} methods")

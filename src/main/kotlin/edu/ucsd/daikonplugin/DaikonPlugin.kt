@@ -47,14 +47,17 @@ open class DaikonPlugin @Inject constructor(
                 val emptyCollection: Set<File> = HashSet<File>()
                 val files =
                         jpc.sourceSets.fold(emptyCollection) { acc,
-                                                               e -> acc.plus(e.output.classesDirs.files) }
-                task.classFiles.set(project.files(files))
+                                                               e ->
+                            if (e.name.startsWith("test"))
+                                acc.plus(e.output.classesDirs.files)
+                            else
+                                acc}
+                task.classFiles.setFrom(files)
 
                 task.additionalClassPath = getAdditionalClassPathFiles(project, extension)
                 val stdFolder = project.layout.projectDirectory.dir("${project.buildDir}/testsDetect")
                 task.outputDirectory.set(extension.callgraphOutputDirectory.getOrElse(stdFolder))
             }
-
 
             // Register & Configure Callgraph
             val callgraphTask = project.tasks.register("callgraph", Callgraph::class.java) { task ->

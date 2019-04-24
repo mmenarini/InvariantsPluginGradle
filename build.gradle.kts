@@ -35,7 +35,7 @@ dependencies {
 }
 
 tasks.wrapper {
-    gradleVersion = "5.2"
+    gradleVersion = "5.4"
 }
 
 val compileKotlin: KotlinCompile by tasks
