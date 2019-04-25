@@ -11,32 +11,33 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeS
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileCollection
-import org.gradle.api.file.FileType
 import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.testing.Test
-import org.gradle.work.ChangeType
-import org.gradle.work.Incremental
 import org.gradle.work.InputChanges
 import org.gradle.workers.IsolationMode
 import org.gradle.workers.WorkerExecutor
 import java.io.File
 import java.net.URI
 import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 import javax.inject.Inject
 
 
-open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
-    @get:Incremental
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    @get:InputFiles
-    val classFiles = project.objects.fileCollection()
-    @get:Incremental
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    @get:InputFile
+open class CallgraphSingle @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
+    @InputFiles
+    val classFiles = project.objects.property(FileCollection::class.java)
+    @InputFile
     val testEntryPoints = project.objects.fileProperty()
+
+    @InputFile
+    @Optional
+    val sourceFile = project.objects.fileProperty()
+    @Input
+    @Optional
+    val lineNumber = project.objects.property(Int::class.java)
+    @Input
+    @Optional
+    val methodSignature = project.objects.property(String::class.java)
 
     @Internal
     lateinit var additionalClassPath: FileCollection
@@ -47,64 +48,10 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
     //@Optional
     val outputDirectory: DirectoryProperty = project.objects.directoryProperty()
 
-    private val utils = TestsResultsUtils()
-    private fun toTestsFilename(relativePath: String): Path {
-        val classToOutput = outputDirectory.asFile.get().toPath().resolve(relativePath)
-        Files.createDirectories(classToOutput.parent)
-        val filename = classToOutput.fileName.toString().removeSuffix(".class")+".tests"
-        return classToOutput.parent.resolve(filename)
-    }
-
     @TaskAction
     internal fun callgraph(inputChanges: InputChanges) {
-        val testsToAnalyze = mutableSetOf<String>()
-        val testMethodsList = mutableSetOf<String>()
-        val testClassesSet = mutableSetOf<String>()
         Files.createDirectories(outputDirectory.get().asFile.toPath())
-        val cachedTestEntryPointFile = outputDirectory.get().asFile.resolve(Tests.OUTPUT_FILE_NAME)
-        if (inputChanges.isIncremental) {
-            if (cachedTestEntryPointFile.exists())
-                utils.LoadTestMethodsList(testClassesSet, testMethodsList, cachedTestEntryPointFile)
-            var testMethodsListNew = mutableSetOf<String>()
-            var testClassesSetNew = mutableSetOf<String>()
-            utils.LoadTestMethodsList(testClassesSetNew, testMethodsListNew, testEntryPoints.get().asFile)
-            testsToAnalyze.addAll(testMethodsListNew.minus(testMethodsList))
-            val addedClasses = ArrayList<String>()
-            val changedClasses = ArrayList<String>()
-            val removedClasses = ArrayList<String>()
-            inputChanges.getFileChanges(classFiles).forEach { change ->
-                if (change.fileType == FileType.DIRECTORY) return@forEach
 
-                if (change.changeType == ChangeType.REMOVED) {
-                    removedClasses.add(change.normalizedPath)
-                } else if (change.changeType == ChangeType.MODIFIED) {
-                    changedClasses.add(change.normalizedPath)
-                } else {
-                    addedClasses.add(change.normalizedPath)
-                }
-            }
-            removedClasses.forEach {
-                val testsFile = toTestsFilename(it)
-                if (Files.exists(testsFile)){
-                    testsToAnalyze.addAll(testsFile.toFile().readLines())
-                    Files.delete(testsFile)
-                }
-            }
-            changedClasses.forEach {
-                val testsFile = toTestsFilename(it)
-                if (Files.exists(testsFile)){
-                    testsToAnalyze.addAll(testsFile.toFile().readLines())
-                    Files.delete(testsFile)
-                }
-            }
-        } else {
-            utils.LoadTestMethodsList(testClassesSet, testMethodsList, testEntryPoints.get().asFile)
-            testsToAnalyze.addAll(testMethodsList)
-        }
-        runSootGC(testClassesSet, testsToAnalyze)
-        daikonTaskProvider.get().outputs.upToDateWhen { false }
-        Files.copy(testEntryPoints.get().asFile.toPath(), cachedTestEntryPointFile.toPath())
-/*
         if(sourceFile.isPresent && lineNumber.isPresent) {
             val signature = computeMethodSignature(sourceFile.get().asFile, lineNumber.get())
             runSootGC(signature)
@@ -114,10 +61,9 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
             daikonTaskProvider.get().outputs.upToDateWhen { false }
         } else
           logger.warn("No method or file/line provided did not run the Callgraph analysis")
-*/
     }
 
-/*   private fun computeMethodSignature(fileName: File, line: Int) : String {
+    private fun computeMethodSignature(fileName: File, line: Int) : String {
         logger.info("Creating Type Resolvers")
         val reflectionTypeSolver = ReflectionTypeSolver()
         reflectionTypeSolver.parent = reflectionTypeSolver
@@ -161,51 +107,7 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
             logger.info("No method found in file ${sourceFile.get()} for line ${lineNumber.get()}")
             return ""
         }
-    }*/
-    private fun runSootGC(testsClasses: Set<String>, tests: Set<String>) {
-        project.tasks.withType(Test::class.java).forEach { test ->
-            System.err.println("Test Classpath = ${test.classpath.asPath}")
-            val realCP = test.classpath.filter {
-                it.exists()
-            }.asPath
-            System.err.println("RealCP = $realCP")
-            val classesFiles = test.classpath.filter {
-                it.exists() && it.isDirectory
-            }.asPath
-            System.err.println("classesFiles = $classesFiles")
-            val tmpRepos = project.repositories.toList()
-            project.repositories.clear()
-            project.repositories.add(project.repositories.maven{ it.url=
-                    URI("https://soot-build.cs.uni-paderborn.de/nexus/repository/swt-upb/") })
-            project.repositories.add(project.repositories.jcenter())
-
-            var sootConfig = project.configurations.findByName("sootconfig")
-            if (sootConfig==null) {
-                sootConfig = project.configurations.create("sootconfig")
-                project.dependencies.add("sootconfig","ca.mcgill.sable:soot:3.2.0")
-            }
-            //project.dependencies.add("sootconfig","org.jetbrains.kotlin:kotlin-reflect:1.3.20")
-            //sootConfig.resolve()
-
-            workerExecutor.submit(CallGraphWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.CLASSLOADER
-                //PROCESS
-                // Constructor parameters for the unit of work implementation
-                it.params(
-                        classesFiles,
-                        realCP,
-                        testsClasses,
-                        tests,
-                        outputDirectory.get().asFile.absolutePath)
-                it.classpath(sootConfig)
-                //it.forkOptions.maxHeapSize = "4G"
-            }
-            workerExecutor.await()
-            project.repositories.clear()
-            project.repositories.addAll(tmpRepos)
-        }
     }
-
     private fun runSootGC(methodName: String) {
         project.tasks.withType(Test::class.java).forEach { test ->
             System.err.println("Test Classpath = ${test.classpath.asPath}")

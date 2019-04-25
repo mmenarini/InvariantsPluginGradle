@@ -27,11 +27,10 @@ open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : Defau
 
     @Internal
     lateinit var additionalClassPath: FileCollection
-//    @Internal
-//    lateinit var daikonTaskProvider: TaskProvider<Daikon>
 
     @OutputDirectory
     val outputDirectory: DirectoryProperty = project.objects.directoryProperty()
+
 
     @TaskAction
     internal fun tests(inputChanges: InputChanges) {
@@ -57,8 +56,6 @@ open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : Defau
                 sootConfig = project.configurations.create("sootconfig")
                 project.dependencies.add("sootconfig","ca.mcgill.sable:soot:3.2.0")
             }
-            //project.dependencies.add("sootconfig","org.jetbrains.kotlin:kotlin-reflect:1.3.20")
-            //sootConfig.resolve()
 
             val addedClasses = ArrayList<String>()
             val changedClasses = ArrayList<String>()

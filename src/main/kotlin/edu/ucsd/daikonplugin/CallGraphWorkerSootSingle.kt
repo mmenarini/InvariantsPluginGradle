@@ -3,20 +3,19 @@ package edu.ucsd.daikonplugin
 import soot.*
 import soot.options.Options
 import soot.tagkit.VisibilityAnnotationTag
-import java.nio.file.FileVisitor
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
 import javax.inject.Inject
 
 
-open class CallGraphWorkerSoot @Inject constructor(
+open class CallGraphWorkerSootSingle @Inject constructor(
         val applicationClasses: String,
+        val methodName: String,
         val classPath: String,
-        val testsClasses: Set<String>,
-        val tests: Set<String>,
+        val testEntryPoints: String,
         val outputDirectory: String) : Runnable {
-    private val utils = TestsResultsUtils()
+
     override fun run() {
         soot.G.reset()
         Files.createDirectories(Paths.get(outputDirectory))
@@ -32,26 +31,41 @@ open class CallGraphWorkerSoot @Inject constructor(
                 "-p", "tag", "enabled:false",
                 "-f", "n",
                 "-cp", classPath,
-                "-d", outputDirectory//,
-                //methodName.substringAfter('<').substringBefore(':')
+                "-d", outputDirectory,
+                methodName.substringAfter('<').substringBefore(':')
         )
         Options.v().parse(args.toTypedArray())
+        var processingClasses = true
         val entryPointsList = ArrayList<SootMethod>()
-        testsClasses.forEach {
-            var c = Scene.v().forceResolve(it,SootClass.BODIES)
-            c.setApplicationClass()
-        }
-        Scene.v().loadNecessaryClasses()
-        tests.forEach {
-            var method = Scene.v().getMethod(it)
-            entryPointsList.add(method)
-        }
-        val setOfClassFiles = mutableSetOf<String>()
-        applicationClasses.split(":").forEach {
-            val path = Paths.get(it)
-            for (f in path.toFile().walkTopDown()) {
-                if(f.isFile && f.name.endsWith(".class")) {
-                    setOfClassFiles.add(utils.classFilenameToClassname(f.toPath().subpath(path.nameCount,f.toPath().nameCount).toString()))
+        val entryPoints = Paths.get(testEntryPoints)
+        if (!(Files.exists(entryPoints) && Files.isRegularFile(entryPoints)))
+            throw Exception("File ${testEntryPoints} not found!")
+        entryPoints.toFile().bufferedReader().use { input ->
+            input.useLines { sequence ->
+                sequence.forEach {
+                    if (processingClasses) {
+                        if (it.startsWith("C:")) {
+                            //Still loading classes
+                            var c = Scene.v().forceResolve(it.substring(2),SootClass.BODIES)
+                            c.setApplicationClass()
+                        } else if (it.startsWith("M:")) {
+                            //Switching to Adding Methods
+                            processingClasses=false
+                            Scene.v().loadNecessaryClasses()
+                            var method = Scene.v().getMethod(it.substring(2))
+                            entryPointsList.add(method)
+                        } else {
+                            throw Exception("should not have strings not starting with C: or  M: here")
+                        }
+                    } else {
+                        if (it.startsWith("M:")) {
+                            //Adding Methods to list
+                            var method = Scene.v().getMethod(it.substring(2))
+                            entryPointsList.add(method)
+                        } else {
+                            throw Exception("should not have strings not starting with M: here")
+                        }
+                    }
                 }
             }
         }
@@ -60,63 +74,69 @@ open class CallGraphWorkerSoot @Inject constructor(
         wjtp.add(
                 Transform("wjtp.AllTestFinder", object : SceneTransformer() {
                     override fun internalTransform(phaseName: String?, options: MutableMap<String, String>?) {
-                        processAllCallGraph(setOfClassFiles,entryPointsList)
+                        val targetMethod = Scene.v().grabMethod(methodName)
+                        if (targetMethod == null) {
+                            //Not in a method lets look for a class
+                            val targetClass = Scene.v()
+                                    .getSootClass(methodName.substringAfter('<')
+                                            .substringBefore(':'))
+                            if (targetClass == null)
+                                throw Exception("Target method nor class were found. The signature used was $methodName.")
+                            else
+                                processClassCallGraph(targetClass)
+                        } else
+                            processMethodCallGraph(targetMethod)
                     }
                 }))
 
         PackManager.v().runPacks()
-    }
-    private fun processAllCallGraph(classes: Set<String>, testMethods: ArrayList<SootMethod>) {
-        System.out.println("Finding classes for tests in list")
 
-        //val classesSoot = classes.map { Scene.v().forceResolve(it,SootClass.BODIES) }
-        //val testMap = HashMap<String, MutableSet<SootMethod>>()
-        val methodsMap = HashMap<String, MutableSet<String>>()
-        testMethods.forEach { testMethod ->
-            val methodsToProcess = mutableSetOf<SootMethod>()
-            val methodsProcessed = mutableSetOf<SootMethod>()
-            methodsToProcess.add(testMethod)
-            while (methodsToProcess.isNotEmpty()) {
-                methodsProcessed.addAll(methodsToProcess)
-                methodsToProcess.toList().forEach {
-                    Scene.v().callGraph.edgesOutOf(it).forEach {
-                        if (classes.contains(it.tgt.method().declaringClass.name)) {
-                            methodsToProcess.add(it.tgt.method())
+    }
+
+    private fun runLibraryMode() {
+        val args = mutableListOf(//"-pp",
+                "-w", "-allow-phantom-refs", "-ice",
+                "-p", "cg", "all-reachable:true,verbose:true,library:any-subtype",
+                "-p", "bb", "enabled:false",
+                "-p", "tag", "enabled:false",
+                "-f", "n",
+                "-cp", classPath,
+                "-d", outputDirectory,
+                methodName.substringAfter('<').substringBefore(':')
+        )
+
+        applicationClasses.split(":")
+                .forEach { args.addAll(arrayOf("-process-dir", it)) }
+        try {
+            val wjtp = PackManager.v().getPack("wjtp")
+            System.err.println("Removing old TestFinder")
+            wjtp.removeAll { true }
+            //wjtp.remove("wjtp.TestFinder")
+            System.err.println("Removing old TestFinder Done")
+            wjtp.add(
+                    Transform("wjtp.TestFinder", object : SceneTransformer() {
+                        override fun internalTransform(phaseName: String?, options: MutableMap<String, String>?) {
+                            val targetMethod = Scene.v().grabMethod(methodName)
+                            if (targetMethod == null) {
+                                //Not in a method lets look for a class
+                                val targetClass = Scene.v()
+                                        .getSootClass(methodName.substringAfter('<')
+                                                .substringBefore(':'))
+                                if (targetClass == null)
+                                    throw Exception("Target method nor class were found. The signature used was $methodName.")
+                                else
+                                    processClassCallGraph(targetClass)
+                            } else
+                                processMethodCallGraph(targetMethod)
                         }
-                    }
-                }
-                methodsToProcess.removeAll(methodsProcessed)
-            }
-            methodsProcessed.forEach{
-                if(!methodsMap.containsKey(it.signature))
-                    methodsMap[it.signature] = mutableSetOf()
-                methodsMap[it.signature]?.add(testMethod.signature)
-            }
-            //testMap.put(testMethod.signature, methodsProcessed)
+                    }))
+        }catch (ex:Exception) {
+            System.err.println(ex.message)
+            ex.printStackTrace()
         }
-        methodsMap.entries.forEach{ (methodName, testsSet) ->
-            val method = Scene.v().getMethod(methodName)
-            val filename = method.declaringClass.name.replace(".","/")+
-                    "/"+method.name+
-                    //"("+method.parameterTypes.map { it.toString() }.joinToString(",")+")"+
-                    ".tests"
-            val filePath=Paths.get(outputDirectory).resolve(Paths.get(filename))
-            Files.createDirectories(filePath.parent)
-            val composedTests = mutableSetOf<String>()
-            if(filePath.toFile().exists()) {
-                composedTests.addAll(filePath.toFile().readLines())
-            }
-            composedTests.addAll(testsSet)
-            filePath.toFile().printWriter().use { printer -> composedTests.forEach{printer.println(it)} }
-        }
-        /*Paths.get(outputDirectory).resolve("testSet.txt").toFile().printWriter().use { out ->
-            System.out.println("Writing testSet.txt, will contain ${testMethods.count()} tests")
-            testMethods.forEach {
-                out.println("${it.method().declaringClass.name}.${it.method().name}")
-            }
-        }*/
-
+        soot.Main.main(args.toTypedArray())
     }
+
     private fun processClassCallGraph(targetClass:SootClass) {
         System.out.println("Finding tests for class ${targetClass.name}")
         val methodsToProcess = HashSet<MethodOrMethodContext>()

@@ -71,6 +71,9 @@ open class DaikonPlugin @Inject constructor(
                 val files =
                 jpc.sourceSets.fold(emptyCollection) { acc,
                                                        e -> acc.plus(e.output.classesDirs.files) }
+                //TODO Need another stage to deal with extracting specific method signatures
+                // (adding this to the Invariants stage?)
+/*
                 task.classFiles.set(project.files(files))
                 if (project.hasProperty("methodSignature")) {
                     task.methodSignature.set(project.properties["methodSignature"].toString())
@@ -95,6 +98,7 @@ open class DaikonPlugin @Inject constructor(
                         task.lineNumber.set(extension.sourceFileLineNumber)
                     }
                 }
+*/
 
                 task.additionalClassPath = getAdditionalClassPathFiles(project, extension)
                 val stdFolder = project.layout.projectDirectory.dir("${project.buildDir}/callgraph")
