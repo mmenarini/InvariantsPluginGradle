@@ -139,7 +139,7 @@ open class DaikonPlugin @Inject constructor(
                 else if (extension.pattern.isPresent)
                     task.daikonPattern.set(extension.pattern)
                 else
-                    task.callGraphDirectory.set(callgraphTask.get().outputDirectory)
+                    task.daikonDirectory.set(daikonTask.get().outputDirectory)
                 val stdFolder = project.layout.projectDirectory.dir("${project.buildDir}/invariants")
                 task.outputDirectory.set(extension.invariantsOutputDirectory.getOrElse(stdFolder))
             }
@@ -149,8 +149,31 @@ open class DaikonPlugin @Inject constructor(
                 task.afterDaikonTask = daikonAfterTestTask.get()
 
                 val stdDir = project.layout.projectDirectory.dir("${project.buildDir}/daikon")
-                task.outputFile.set(extension.daikonOutputDirectory.getOrElse(stdDir).file("test.inv.gz"))
+                task.outputDirectory.set(extension.daikonOutputDirectory.getOrElse(stdDir))
 
+                if (project.hasProperty("methodSignature")) {
+                    task.methodSignature.set(project.properties["methodSignature"].toString())
+                } else if (extension.methodSignature.isPresent){
+                    task.methodSignature.set(extension.methodSignature)
+                } else {
+                    if (project.hasProperty("invariantsSourceFile")) {
+                        val f = Paths.get(
+                                project.layout.files(
+                                        project.property("invariantsSourceFile").toString()).asPath)
+                        if (!Files.isRegularFile(f))
+                            throw Exception("Could not find java file $f")
+                        task.sourceFile.set(f.toFile())
+                    } else {
+                        task.sourceFile.set(extension.sourceFile)
+                    }
+                    if (project.hasProperty("invariantsSourceFileLineNumber")) {
+                        val lineN = Integer.parseInt(
+                                project.property("invariantsSourceFileLineNumber").toString())
+                        task.lineNumber.set(lineN)
+                    } else {
+                        task.lineNumber.set(extension.sourceFileLineNumber)
+                    }
+                }
                 if (project.hasProperty("daikonPattern"))
                     task.daikonPattern.set(project.property("daikonPattern").toString())
                 else if (extension.pattern.isPresent)

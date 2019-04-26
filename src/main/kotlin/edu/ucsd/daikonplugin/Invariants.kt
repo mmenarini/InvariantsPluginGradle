@@ -2,7 +2,6 @@ package edu.ucsd.daikonplugin
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.workers.IsolationMode
 import org.gradle.workers.WorkerExecutor
@@ -20,7 +19,7 @@ open class Invariants @Inject constructor(val workerExecutor: WorkerExecutor): D
 
     @InputDirectory
     @Optional
-    val callGraphDirectory = project.objects.directoryProperty()
+    val daikonDirectory = project.objects.directoryProperty()
 
     @InputFile
     val inputFile = project.objects.fileProperty()
@@ -32,8 +31,8 @@ open class Invariants @Inject constructor(val workerExecutor: WorkerExecutor): D
     internal fun invariants() {
         var  selectedPattern = when {
             daikonPattern.isPresent -> daikonPattern.get()
-            callGraphDirectory.isPresent -> callGraphDirectory.asFile.get().resolve("path.txt").readText()
-            else -> throw Exception("Cannot run daikon without a daikonPattern or a callgraph directory specified")
+            daikonDirectory.isPresent -> daikonDirectory.asFile.get().resolve("path.txt").readText()
+            else -> throw Exception("Cannot run daikon without a daikonPattern or a daikon directory specified")
         }
 
         val outputDirectoryPath = outputDirectory.get().asFile.toPath().toAbsolutePath()
