@@ -61,7 +61,7 @@ open class TestsWorkerSoot @Inject constructor(
                             if (b==null) return
                             var method = b.method
                             var declClass = method?.declaringClass
-                            if(declClass==null || method==null) return
+                            if(declClass==null || method==null || method.isConstructor) return
                             if (utils.isInstanceOfClass(declClass,"junit.framework.TestCase") ||
                                     utils.isAnnotatedTest(method))
                             {
