@@ -61,14 +61,16 @@ class TestsResultsUtils {
         val tag = sootMethod.getTag("VisibilityAnnotationTag") as VisibilityAnnotationTag?
         tag?.annotations?.forEach {
             val annotationType = it.type
-            if (annotationType.equals("Landroid/webkit/JavascriptInterface;") ||
-                    annotationType.equals("Lorg/junit/BeforeClass;") ||
-                    annotationType.equals("Lorg/junit/AfterClass;") ||
-                    annotationType.equals("Lorg/junit/Before;") ||
-                    annotationType.equals("Lorg/junit/After;") ||
-                    annotationType.equals("Lorg/junit/Test;")) {
-                return true
-            }
+// TODO: Fix for when a setup or teardown method is the one calling our targets
+//            if (annotationType.equals("Landroid/webkit/JavascriptInterface;") ||
+//                    annotationType.equals("Lorg/junit/BeforeClass;") ||
+//                    annotationType.equals("Lorg/junit/AfterClass;") ||
+//                    annotationType.equals("Lorg/junit/Before;") ||
+//                    annotationType.equals("Lorg/junit/After;") ||
+//                    annotationType.equals("Lorg/junit/Test;")) {
+//                return true
+            return annotationType.equals("Lorg/junit/Test;");
+//            }
         }
         return false
     }
@@ -149,7 +151,7 @@ class TestsResultsUtils {
     }
     private val testAnnotationTag = "Lorg/junit/Test;"
     private fun isTest(m: SootMethod): Boolean {
-        if (implementsTest(m.declaringClass, "junit.framework.Test"))
+        if (implementsTest(m.declaringClass, "junit.framework.Test") && m.name.startsWith("test"))
             return true
         return m.tags.any {
             (it as VisibilityAnnotationTag).annotations.any { testAnnotationTag == it.type }

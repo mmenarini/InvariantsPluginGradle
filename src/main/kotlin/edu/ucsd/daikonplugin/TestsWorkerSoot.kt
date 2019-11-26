@@ -62,7 +62,7 @@ open class TestsWorkerSoot @Inject constructor(
                             var method = b.method
                             var declClass = method?.declaringClass
                             if(declClass==null || method==null || method.isConstructor) return
-                            if (utils.isInstanceOfClass(declClass,"junit.framework.TestCase") ||
+                            if ((utils.isInstanceOfClass(declClass,"junit.framework.TestCase") && method.name.startsWith("test")) ||
                                     utils.isAnnotatedTest(method))
                             {
                                 var className = declClass?.name
