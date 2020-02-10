@@ -9,6 +9,7 @@ import org.gradle.process.internal.worker.child.WorkerProcessClassPathProvider
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
+import java.util.function.Consumer
 import javax.inject.Inject
 
 
@@ -32,7 +33,8 @@ open class DaikonPlugin @Inject constructor(
             }
 
             val testTasks = project.tasks.withType(Test::class.java)
-
+            //Making sure that invariants are found even if some taks fails
+            testTasks.forEach{it.ignoreFailures=true }
             // Register Invariants
             val invariantsTask = project.tasks.register("invariants", Invariants::class.java)
             // Register Daikon
