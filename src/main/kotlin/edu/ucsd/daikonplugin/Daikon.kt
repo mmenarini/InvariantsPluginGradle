@@ -71,6 +71,13 @@ open class Daikon : DefaultTask() {
 
         val outputDirectoryPath = outputDirectory.get().asFile.toPath()
         val outputFilePath = outputDirectoryPath.resolve("test.inv.gz")
+        try {
+            Files.deleteIfExists(outputFilePath)
+            logger.warn("Removed test.inv.gz")
+        } catch(e: Throwable) {
+            logger.error("Failed to remove the old daikon results file", e)
+        }
+
 
         val selectedClass=signature.substringAfter("<").substringBefore(":")
         val selectedMethod = signature.substringBefore("(").substringAfterLast(" ")

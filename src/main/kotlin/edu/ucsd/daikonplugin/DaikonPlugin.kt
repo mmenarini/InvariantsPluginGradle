@@ -147,6 +147,7 @@ open class DaikonPlugin @Inject constructor(
             }
             // Configure Daikon
             daikonTask.configure { task ->
+                task.dependsOn(callgraphTask)
                 project.gradle.startParameter.isContinueOnFailure = true
                 testTasks.forEach{it.outputs.upToDateWhen{false}}
                 task.finalizedBy(testTasks)
