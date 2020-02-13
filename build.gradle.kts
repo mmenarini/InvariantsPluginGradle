@@ -26,16 +26,16 @@ repositories {
 }
 
 dependencies {
-    compile("org.jetbrains.kotlin:kotlin-reflect:1.3.20")
-    compile(kotlin("stdlib-jdk8"))
-    compile("com.github.javaparser:javaparser-symbol-solver-core:3.11.0")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.20")
+    implementation(kotlin("stdlib-jdk8"))
+    implementation("com.github.javaparser:javaparser-symbol-solver-core:3.11.0")
     compileOnly("ca.mcgill.sable:soot:3.2.0")
     //compileOnly(project.layout.files("/home/mmenarini/daikon-5.7.2/daikon.jar"))
     //compileOnly(project.layout.files("/home/mmenarini/Dev/daikon/daikon.jar"))
 }
 
 tasks.wrapper {
-    gradleVersion = "5.4"
+    gradleVersion = "6.1.1"
 }
 
 val compileKotlin: KotlinCompile by tasks
