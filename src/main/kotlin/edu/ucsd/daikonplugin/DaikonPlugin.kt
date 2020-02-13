@@ -42,7 +42,7 @@ open class DaikonPlugin @Inject constructor(
 
             // Register & Configure Callgraph
             val testsDetectTask = project.tasks.register("testsDetect", Tests::class.java) { task ->
-                //task.dependsOn("classes")
+                task.dependsOn("classes")
                 task.dependsOn("testClasses")
 
                 val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
@@ -65,7 +65,7 @@ open class DaikonPlugin @Inject constructor(
             val callgraphTask = project.tasks.register("callgraph", Callgraph::class.java) { task ->
                 task.dependsOn("classes")
                 task.dependsOn("testClasses")
-                //task.dependsOn("testsDetect")
+                task.dependsOn("testsDetect")
                 task.testEntryPoints.set(testsDetectTask.get().outputDirectory.file(Tests.OUTPUT_FILE_NAME))
                 task.daikonTaskProvider = daikonTask
                 val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
@@ -147,6 +147,8 @@ open class DaikonPlugin @Inject constructor(
             }
             // Configure Daikon
             daikonTask.configure { task ->
+                project.gradle.startParameter.isContinueOnFailure = true
+                testTasks.forEach{it.outputs.upToDateWhen{false}}
                 task.finalizedBy(testTasks)
                 task.afterDaikonTask = daikonAfterTestTask.get()
 
