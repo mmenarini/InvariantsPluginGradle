@@ -4,12 +4,12 @@ import org.gradle.api.*
 import org.gradle.api.file.FileCollection
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.plugins.JavaPluginConvention
+import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.testing.Test
 import org.gradle.process.internal.worker.child.WorkerProcessClassPathProvider
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
-import java.util.function.Consumer
 import javax.inject.Inject
 
 
@@ -33,81 +33,51 @@ open class DaikonPlugin @Inject constructor(
             }
 
             val testTasks = project.tasks.withType(Test::class.java)
-            //Making sure that invariants are found even if some taks fails
-            testTasks.forEach{it.ignoreFailures=true }
+
             // Register Invariants
             val invariantsTask = project.tasks.register("invariants", Invariants::class.java)
+
             // Register Daikon
             val daikonTask = project.tasks.register("daikon", Daikon::class.java)
 
-            // Register & Configure Callgraph
-            val testsDetectTask = project.tasks.register("testsDetect", Tests::class.java) { task ->
-                task.dependsOn("classes")
-                task.dependsOn("testClasses")
+            // We register one task for each test SourceSet
+            val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
+            val testSourceSets = jpc.sourceSets.asMap.filterKeys { it.startsWith("test") }.values
+            val testsDetectTasks = mutableListOf<TaskProvider<TestsDetect>>()
+            val callgraphTasks = mutableListOf<TaskProvider<Callgraph>>()
+            testSourceSets.forEach { sourceSet ->
+                // Register & Configure TestDetect
+                val testsDetectTask = project.tasks.register(
+                        "testsDetect_"+sourceSet.name, TestsDetect::class.java) { task ->
 
-                val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
-                val emptyCollection: Set<File> = HashSet<File>()
-                val files =
-                        jpc.sourceSets.fold(emptyCollection) { acc,
-                                                               e ->
-                            if (e.name.startsWith("test"))
-                                acc.plus(e.output.classesDirs.files)
-                            else
-                                acc}
-                task.classFiles.setFrom(files)
-
-                task.additionalClassPath = getAdditionalClassPathFiles(project, extension)
-                val stdFolder = project.layout.projectDirectory.dir("${project.buildDir}/testsDetect")
-                task.outputDirectory.set(extension.callgraphOutputDirectory.getOrElse(stdFolder))
-            }
-
-            // Register & Configure Callgraph
-            val callgraphTask = project.tasks.register("callgraph", Callgraph::class.java) { task ->
-                task.dependsOn("classes")
-                task.dependsOn("testClasses")
-                task.dependsOn("testsDetect")
-                task.testEntryPoints.set(testsDetectTask.get().outputDirectory.file(Tests.OUTPUT_FILE_NAME))
-                task.daikonTaskProvider = daikonTask
-                val jpc = project.convention.getPlugin(JavaPluginConvention::class.java)
-                val emptyCollection: Set<File> = HashSet<File>()
-                val files =
-                jpc.sourceSets.fold(emptyCollection) { acc,
-                                                       e -> acc.plus(e.output.classesDirs.files) }
-                //TODO Need another stage to deal with extracting specific method signatures
-                // (adding this to the Invariants stage?)
-/*
-                task.classFiles.set(project.files(files))
-                if (project.hasProperty("methodSignature")) {
-                    task.methodSignature.set(project.properties["methodSignature"].toString())
-                } else if (extension.methodSignature.isPresent){
-                    task.methodSignature.set(extension.methodSignature)
-                } else {
-                    if (project.hasProperty("invariantsSourceFile")) {
-                        val f = Paths.get(
-                                project.layout.files(
-                                        project.property("invariantsSourceFile").toString()).asPath)
-                        if (!Files.isRegularFile(f))
-                            throw Exception("Could not find java file $f")
-                        task.sourceFile.set(f.toFile())
-                    } else {
-                        task.sourceFile.set(extension.sourceFile)
-                    }
-                    if (project.hasProperty("invariantsSourceFileLineNumber")) {
-                        val lineN = Integer.parseInt(
-                                project.property("invariantsSourceFileLineNumber").toString())
-                        task.lineNumber.set(lineN)
-                    } else {
-                        task.lineNumber.set(extension.sourceFileLineNumber)
-                    }
+                    val classFiles = sourceSet.output.asFileTree.matching{ t -> t.include("**/*.class")}.files
+                    task.classFiles.from(classFiles)
+                    task.compileClassPath.from(sourceSet.compileClasspath)
+                    task.sourceSetId.set(sourceSet.name)
+                    task.outputDirectory.set(extension.callgraphOutputDirectory.getOrElse(TestsDetect.STD_FOLDER(project)))
                 }
-*/
+                testsDetectTasks.add(testsDetectTask)
 
-                task.additionalClassPath = getAdditionalClassPathFiles(project, extension)
-                val stdFolder = project.layout.projectDirectory.dir("${project.buildDir}/callgraph")
-                task.outputDirectory.set(extension.callgraphOutputDirectory.getOrElse(stdFolder))
+                // Register & Configure Callgraph
+
+                val callgraphTask = project.tasks.register(
+                        "callgraph_"+sourceSet.name, Callgraph::class.java) { task ->
+
+                    val classFiles = jpc.sourceSets.fold(mutableSetOf<File>()){
+                        filesSet, sourceSet ->
+                        filesSet.addAll(sourceSet.output.asFileTree.matching{ t -> t.include("**/*.class")}.files)
+                        return@fold filesSet
+                    }
+                    task.classFiles.from(classFiles)
+                    task.testEntryPoints.set(testsDetectTask.get().outputFile)
+                    task.classPath.from(sourceSet.runtimeClasspath)
+                    task.sourceSetId.set(sourceSet.name)
+                    task.outputDirectory.set(extension.callgraphOutputDirectory.getOrElse(Callgraph.STD_FOLDER(project)))
+                }
+                callgraphTasks.add(callgraphTask)
             }
 
-            // Register & Configure cleanCallgraph
+
             val daikonAfterTestTask = project.tasks.register("daikonAfterTest", DaikonAfterTest::class.java) {
                 it.mustRunAfter(testTasks)
                 it.dependsOn(daikonTask)
@@ -117,7 +87,7 @@ open class DaikonPlugin @Inject constructor(
             }
             // Register & Configure cleanTestsDetect
             project.tasks.create("cleanTestsDetect") {
-                it.actions.add(Action<Task> { testsDetectTask.get().outputs.upToDateWhen { false } })
+                it.actions.add(Action<Task> { testsDetectTasks.forEach { it.get().outputs.upToDateWhen { false } } })
             }
             // Register & Configure cleanDaikon
             project.tasks.create("cleanDaikon") {
@@ -129,7 +99,7 @@ open class DaikonPlugin @Inject constructor(
             }
             // Register & Configure cleanCallgraph
             project.tasks.create("cleanCallgraph") {
-                it.actions.add(Action<Task> { callgraphTask.get().outputs.upToDateWhen { false } })
+                it.actions.add(Action<Task> { callgraphTasks.forEach { it.get().outputs.upToDateWhen { false } } })
             }
             // Configure Invariants
             invariantsTask.configure { task ->
@@ -147,7 +117,10 @@ open class DaikonPlugin @Inject constructor(
             }
             // Configure Daikon
             daikonTask.configure { task ->
-                task.dependsOn(callgraphTask)
+                //Making sure that invariants are found even if some taks fails
+                testTasks.forEach{it.ignoreFailures=true }
+
+                //task.dependsOn(callgraphTask)
                 project.gradle.startParameter.isContinueOnFailure = true
                 testTasks.forEach{it.outputs.upToDateWhen{false}}
                 task.finalizedBy(testTasks)

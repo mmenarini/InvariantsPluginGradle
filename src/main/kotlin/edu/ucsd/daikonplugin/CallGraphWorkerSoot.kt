@@ -1,25 +1,32 @@
 package edu.ucsd.daikonplugin
 
+import org.gradle.workers.WorkAction
+import org.gradle.workers.WorkParameters
 import soot.*
 import soot.options.Options
 import soot.tagkit.VisibilityAnnotationTag
+import java.io.File
 import java.nio.file.FileVisitor
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.*
 import javax.inject.Inject
 
+interface CallGraphWorkerParameters : WorkParameters {
+    val testsClasses: MutableSet<String>
+    val tests: MutableSet<String>
+    val applicationClasses: MutableSet<String>
+    var classPath: String
+    var sourceSetId: String
+    var outputDir: Path
+}
 
-open class CallGraphWorkerSoot @Inject constructor(
-        val applicationClasses: String,
-        val classPath: String,
-        val testsClasses: Set<String>,
-        val tests: Set<String>,
-        val outputDirectory: String) : Runnable {
+open abstract class CallGraphWorkerSoot @Inject constructor() : WorkAction<CallGraphWorkerParameters> {
     private val utils = TestsResultsUtils()
-    override fun run() {
+    override fun execute() {
         soot.G.reset()
-        Files.createDirectories(Paths.get(outputDirectory))
+        Files.createDirectories(parameters.outputDir)
         //runLibraryMode()
         runTestEntryPointsMode()
     }
@@ -31,23 +38,23 @@ open class CallGraphWorkerSoot @Inject constructor(
                 "-p", "bb", "enabled:false",
                 "-p", "tag", "enabled:false",
                 "-f", "n",
-                "-cp", classPath,
-                "-d", outputDirectory//,
+                "-cp", parameters.classPath,
+                "-d", parameters.outputDir.toAbsolutePath().toString()//,
                 //methodName.substringAfter('<').substringBefore(':')
         )
         Options.v().parse(args.toTypedArray())
         val entryPointsList = ArrayList<SootMethod>()
-        testsClasses.forEach {
+        parameters.testsClasses.forEach {
             var c = Scene.v().forceResolve(it,SootClass.BODIES)
             c.setApplicationClass()
         }
         Scene.v().loadNecessaryClasses()
-        tests.forEach {
+        parameters.tests.forEach {
             var method = Scene.v().getMethod(it)
             entryPointsList.add(method)
         }
         val setOfClassFiles = mutableSetOf<String>()
-        applicationClasses.split(":").forEach {
+        parameters.applicationClasses.forEach {
             val path = Paths.get(it)
             for (f in path.toFile().walkTopDown()) {
                 if(f.isFile && f.name.endsWith(".class")) {
@@ -99,8 +106,9 @@ open class CallGraphWorkerSoot @Inject constructor(
             val filename = method.declaringClass.name.replace(".","/")+
                     "/"+method.name+
                     //"("+method.parameterTypes.map { it.toString() }.joinToString(",")+")"+
+                    "."+parameters.sourceSetId+
                     ".tests"
-            val filePath=Paths.get(outputDirectory).resolve(Paths.get(filename))
+            val filePath=parameters.outputDir.resolve(Paths.get(filename))
             Files.createDirectories(filePath.parent)
             val composedTests = mutableSetOf<String>()
             if(filePath.toFile().exists()) {
@@ -117,6 +125,7 @@ open class CallGraphWorkerSoot @Inject constructor(
         }*/
 
     }
+
     private fun processClassCallGraph(targetClass:SootClass) {
         System.out.println("Finding tests for class ${targetClass.name}")
         val methodsToProcess = HashSet<MethodOrMethodContext>()
@@ -137,12 +146,12 @@ open class CallGraphWorkerSoot @Inject constructor(
         }
         if (testMethods.isEmpty())
             throw Exception("Did not find any test for class${targetClass.name}")
-        Paths.get(outputDirectory).resolve("path.txt").toFile().printWriter().use { out ->
+        parameters.outputDir.resolve("path.txt").toFile().printWriter().use { out ->
             val pattern = "^${targetClass.name.replace(".", "\\.")}\\.*"
             System.out.println("Writing path.txt, will contain $pattern")
             out.println(pattern)
         }
-        Paths.get(outputDirectory).resolve("testSet.txt").toFile().printWriter().use { out ->
+        parameters.outputDir.resolve("testSet.txt").toFile().printWriter().use { out ->
             System.out.println("Writing testSet.txt, will contain ${testMethods.count()} tests")
             testMethods.forEach {
                 out.println("${it.method().declaringClass.name}.${it.method().name}")
@@ -167,7 +176,7 @@ open class CallGraphWorkerSoot @Inject constructor(
             }
             methodsToProcess.removeAll(methodsProcessed)
         }
-        Paths.get(outputDirectory).resolve("path.txt").toFile().printWriter().use { out ->
+        parameters.outputDir.resolve("path.txt").toFile().printWriter().use { out ->
             val pattern =
                     "^${targetMethod.declaringClass.name.replace(".", "\\.")}\\.${targetMethod.name}"
             System.out.println("Writing path.txt, will contain $pattern")
@@ -175,7 +184,7 @@ open class CallGraphWorkerSoot @Inject constructor(
         }
         if (testMethods.isEmpty())
             throw Exception("Did not find any test for method ${targetMethod.name}")
-        Paths.get(outputDirectory).resolve("testSet.txt").toFile().printWriter().use { out ->
+        parameters.outputDir.resolve("testSet.txt").toFile().printWriter().use { out ->
             System.out.println("Writing testSet.txt, will contain ${testMethods.count()} tests")
             testMethods.forEach {
                 out.println("${it.method().declaringClass.name}.${it.method().name}")

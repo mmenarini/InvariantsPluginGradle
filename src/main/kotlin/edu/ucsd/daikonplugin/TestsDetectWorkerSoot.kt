@@ -1,45 +1,56 @@
 package edu.ucsd.daikonplugin
 
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
+import org.gradle.workers.WorkAction
+import org.gradle.workers.WorkParameters
 import soot.*
+import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import javax.inject.Inject
-import kotlin.collections.HashSet
 
-open class TestsWorkerSoot @Inject constructor(
-        val addedClasses: List<String>,
-        val changedClasses: List<String>,
-        val removedClasses: List<String>,
-        val classPath: String,
-        val outputDirectory: String) : Runnable {
+interface TestsDetectParameters : WorkParameters {
+    val addedClasses: MutableList<String>
+    val changedClasses: MutableList<String>
+    val removedClasses: MutableList<String>
+    var classPath: String
+    var outputFile: File
+    var outputDir: Path
+}
+open abstract class TestsDetectWorkerSoot @Inject constructor() : WorkAction<TestsDetectParameters> {
 
     private val utils = TestsResultsUtils()
 
-    override fun run() {
+    override fun execute() {
         soot.G.reset()
-        Files.createDirectories(Paths.get(outputDirectory))
+        Files.createDirectories(parameters.outputDir)
         val argsPar = mutableListOf(//"-pp",
                 /*"-w",*/ "-allow-phantom-refs", "-ice",
                 //"-p", "bb", "enabled:false",
                 //"-p", "tag", "enabled:false",
                 "-p", "jtp", "enabled:true",
                 "-f", "n",
-                "-cp", classPath,
-                "-d", outputDirectory
+                "-cp", parameters.classPath,
+                "-d", parameters.outputDir.toAbsolutePath().toString()
         )
 
         var testMethodsList = mutableSetOf<String>()
         var testClassesSet = mutableSetOf<String>()
-        val file = Paths.get(outputDirectory).resolve(Tests.OUTPUT_FILE_NAME).toFile()
+        val file = parameters.outputFile
+
         utils.LoadTestMethodsList(testClassesSet, testMethodsList, file)
-        removedClasses.forEach {
+
+        parameters.removedClasses.forEach {
             val classname = utils.classFilenameToClassname(it)
             if (classname!="") {
                 testClassesSet.remove(classname)
                 testMethodsList.removeAll { it.startsWith("<"+classname) }
             }
         }
-        changedClasses.forEach {
+        parameters.changedClasses.forEach {
             val classname = utils.classFilenameToClassname(it)
             if (classname!="") {
                 testClassesSet.remove(classname)
@@ -47,8 +58,8 @@ open class TestsWorkerSoot @Inject constructor(
             }
         }
         val args = mutableListOf<String>()
-        changedClasses.forEach { args.add(utils.classFilenameToClassname(it)) }
-        addedClasses.forEach { args.add(utils.classFilenameToClassname(it)) }
+        parameters.changedClasses.forEach { args.add(utils.classFilenameToClassname(it)) }
+        parameters.addedClasses.forEach { args.add(utils.classFilenameToClassname(it)) }
         args.addAll(argsPar)
         try {
             val jtp = PackManager.v().getPack("jtp")

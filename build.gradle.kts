@@ -2,7 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     `java-gradle-plugin`
-    kotlin("jvm") version "1.3.20"
+    kotlin("jvm") version "1.3.61"
 }
 
 group = "edu.ucsd.invariants"
@@ -26,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.20")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.61")
     implementation(kotlin("stdlib-jdk8"))
     implementation("com.github.javaparser:javaparser-symbol-solver-core:3.11.0")
     compileOnly("ca.mcgill.sable:soot:3.2.0")
