@@ -3,6 +3,7 @@ package edu.ucsd.daikonplugin
 import soot.*
 import soot.options.Options
 import soot.tagkit.VisibilityAnnotationTag
+import java.io.File
 import java.nio.file.FileVisitor
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -25,6 +26,7 @@ open class CallGraphWorkerSoot @Inject constructor(
     }
 
     private fun runTestEntryPointsMode() {
+        soot.G.reset()
         val args = mutableListOf(//"-pp",
                 "-w", "-allow-phantom-refs", "-ice",
                 "-p", "cg", "all-reachable:false,verbose:true,library:disabled",
@@ -96,18 +98,24 @@ open class CallGraphWorkerSoot @Inject constructor(
         }
         methodsMap.entries.forEach{ (methodName, testsSet) ->
             val method = Scene.v().getMethod(methodName)
-            val filename = method.declaringClass.name.replace(".","/")+
-                    "/"+method.name+
+            val filename = utils.filterMethodNametoFilename(
+                    method.declaringClass.name.replace(".", File.separator)+
+                    File.separator+method.name+
                     //"("+method.parameterTypes.map { it.toString() }.joinToString(",")+")"+
-                    ".tests"
-            val filePath=Paths.get(outputDirectory).resolve(Paths.get(filename))
-            Files.createDirectories(filePath.parent)
-            val composedTests = mutableSetOf<String>()
-            if(filePath.toFile().exists()) {
-                composedTests.addAll(filePath.toFile().readLines())
+                    ".tests")
+            try {
+                val filePath = Paths.get(outputDirectory).resolve(Paths.get(filename))
+
+                Files.createDirectories(filePath.parent)
+                val composedTests = mutableSetOf<String>()
+                if (filePath.toFile().exists()) {
+                    composedTests.addAll(filePath.toFile().readLines())
+                }
+                composedTests.addAll(testsSet)
+                filePath.toFile().printWriter().use { printer -> composedTests.forEach { printer.println(it) } }
+            } catch (e: Throwable) {
+                e.printStackTrace()
             }
-            composedTests.addAll(testsSet)
-            filePath.toFile().printWriter().use { printer -> composedTests.forEach{printer.println(it)} }
         }
         /*Paths.get(outputDirectory).resolve("testSet.txt").toFile().printWriter().use { out ->
             System.out.println("Writing testSet.txt, will contain ${testMethods.count()} tests")

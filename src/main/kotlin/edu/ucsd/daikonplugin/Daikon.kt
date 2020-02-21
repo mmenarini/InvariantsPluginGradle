@@ -49,8 +49,9 @@ open class Daikon : DefaultTask() {
     @OutputDirectory
     var outputDirectory = project.objects.directoryProperty()
 
-//    @OutputFile
+    //    @OutputFile
 //    var outputFile = project.objects.fileProperty()
+    private val utils = TestsResultsUtils()
 
     private fun signatureToTestName(signature: String):String {
         return signature.substringAfter("<").substringBefore(":") +
@@ -82,10 +83,11 @@ open class Daikon : DefaultTask() {
         val selectedClass=signature.substringAfter("<").substringBefore(":")
         val selectedMethod = signature.substringBefore("(").substringAfterLast(" ")
 
-        val filename = selectedClass.replace(".","/")+
-                "/"+selectedMethod+
-                //"("+method.parameterTypes.map { it.toString() }.joinToString(",")+")"+
-                ".tests"
+        val filename = utils.filterMethodNametoFilename(
+                selectedClass.replace('.',File.separatorChar)+
+                        File.separatorChar+selectedMethod+
+                        //"("+method.parameterTypes.map { it.toString() }.joinToString(",")+")"+
+                        ".tests")
 
         val tests=callGraphDirectory.asFile.get().resolve(filename).readLines()
         if (tests.isEmpty()) {
@@ -104,20 +106,20 @@ open class Daikon : DefaultTask() {
 
         project.tasks.withType(Test::class.java).configureEach { test ->
             test.outputs.upToDateWhen { false }
-            test.maxParallelForks  = 1
+            test.maxParallelForks = 1
             test.setForkEvery(0)
             test.ignoreFailures = true
 
             test.setTestNameIncludePatterns(tests.map { signatureToTestName(it) })
 
             Files.createDirectories(outputDirectoryPath)
-            val newScript = outputDirectoryPath.resolve("java-daikon.sh")
 
+            val newScript = outputDirectoryPath.resolve("java-daikon.sh")
             //Create a new script
-            javaClass.getResourceAsStream("/java-daikon.sh").bufferedReader().use{ input ->
+            javaClass.getResourceAsStream("/java-daikon.sh").bufferedReader().use { input ->
                 if (Files.exists(newScript)) Files.delete(newScript)
-                newScript.toFile().printWriter().use{ output ->
-                    input.lines().forEach{ line ->
+                newScript.toFile().printWriter().use { output ->
+                    input.lines().forEach { line ->
                         if (line.contains("@OUTPUT_FILE@"))
                             output.println(line.replace("@OUTPUT_FILE@", outputFilePath.toString()))
                         else if (line.contains("@DAIKON_JAR@"))

@@ -16,6 +16,7 @@ class TestsResultsUtils {
     private var regexDollar = Regex(getPatternDollar())
     fun classFilenameToClassname(name: String):String {
         var name = name.replace("/",".")
+                .replace("\\",".");
         if (!name.endsWith(".class")) return ""
         name = name.substringBefore(".class")
         name = regexDollarNum.replace(name,"")
@@ -156,5 +157,18 @@ class TestsResultsUtils {
         return m.tags.any {
             (it as VisibilityAnnotationTag).annotations.any { testAnnotationTag == it.type }
         }
+    }
+
+    fun filterMethodNametoFilename(filename: String): String {
+        return filename.substringBeforeLast(File.separatorChar)+File.separator+
+                filename.substringAfterLast(File.separatorChar)
+                        .replace('<','+')
+                        .replace('>','-')
+    }
+    fun filterFilenametoMethodName(methodname: String): String {
+        return methodname.substringBeforeLast('.')+"."+
+                methodname.substringAfterLast('.')
+                        .replace('+','<')
+                        .replace('-','>')
     }
 }
