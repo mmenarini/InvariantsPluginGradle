@@ -73,7 +73,8 @@ open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : Defau
             }
 
             workerExecutor.submit(TestsWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.CLASSLOADER // PROCESS
+                it.isolationMode = IsolationMode.PROCESS //
+                // .CLASSLOADER // .PROCESS
                 // Constructor parameters for the unit of work implementation
                 it.params(
                         addedClasses,

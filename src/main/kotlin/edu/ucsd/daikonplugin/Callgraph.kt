@@ -188,7 +188,8 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
             //sootConfig.resolve()
 
             workerExecutor.submit(CallGraphWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.CLASSLOADER
+                it.isolationMode = IsolationMode.PROCESS
+                //CLASSLOADER
                 //PROCESS
                 // Constructor parameters for the unit of work implementation
                 it.params(

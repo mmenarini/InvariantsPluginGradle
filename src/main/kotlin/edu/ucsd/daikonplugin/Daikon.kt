@@ -7,18 +7,14 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
-import org.gradle.api.Action
 import org.gradle.api.DefaultTask
 import org.gradle.api.Task
 import org.gradle.api.file.FileCollection
 import org.gradle.api.plugins.JavaPluginConvention
-import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.testing.Test
 import java.io.File
 import java.nio.file.Files
-import java.nio.file.Paths
-import kotlin.math.sign
 
 
 open class Daikon : DefaultTask() {
@@ -114,26 +110,56 @@ open class Daikon : DefaultTask() {
 
             Files.createDirectories(outputDirectoryPath)
 
-            val newScript = outputDirectoryPath.resolve("java-daikon.sh")
-            //Create a new script
-            javaClass.getResourceAsStream("/java-daikon.sh").bufferedReader().use { input ->
-                if (Files.exists(newScript)) Files.delete(newScript)
-                newScript.toFile().printWriter().use { output ->
-                    input.lines().forEach { line ->
-                        if (line.contains("@OUTPUT_FILE@"))
-                            output.println(line.replace("@OUTPUT_FILE@", outputFilePath.toString()))
-                        else if (line.contains("@DAIKON_JAR@"))
-                            output.println(line.replace("@DAIKON_JAR@", daikonJarPath))
-                        else if (line.contains("@PATTERN@"))
-                            output.println(line.replace("@PATTERN@", selectedPattern))
-                        else
-                            output.println(line)
+            if (System.getProperty("os.name").toLowerCase().startsWith("win")) {
+                val newScript = outputDirectoryPath.resolve("gettyJava.exe")
+                if(!Files.exists(newScript)){
+                    javaClass.getResourceAsStream("/gettyJava.exe").buffered(32000).use {
+                        input ->
+                        newScript.toFile().outputStream().use {
+                            output ->
+                            input.copyTo(output)
+                        }
                     }
                 }
-                if (!Files.isExecutable(newScript))
-                    newScript.toFile().setExecutable(true, true)
+                val newScriptConfig = outputDirectoryPath.resolve("gettyJava.config")
+                javaClass.getResourceAsStream("/gettyJava.config").bufferedReader().use { input ->
+                    if (Files.exists(newScriptConfig)) Files.delete(newScriptConfig)
+                    newScriptConfig.toFile().printWriter().use { output ->
+                        input.lines().forEach { line ->
+                            if (line.contains("@OUTPUT_FILE@"))
+                                output.println(line.replace("@OUTPUT_FILE@", outputFilePath.toString()))
+                            else if (line.contains("@DAIKON_JAR@"))
+                                output.println(line.replace("@DAIKON_JAR@", daikonJarPath))
+                            else if (line.contains("@PATTERN@"))
+                                output.println(line.replace("@PATTERN@", selectedPattern))
+                            else
+                                output.println(line)
+                        }
+                    }
+                }
+                test.executable = newScript.toString()
+            } else {
+                val newScript = outputDirectoryPath.resolve("java-daikon.sh")
+                //Create a new script
+                javaClass.getResourceAsStream("/java-daikon.sh").bufferedReader().use { input ->
+                    if (Files.exists(newScript)) Files.delete(newScript)
+                    newScript.toFile().printWriter().use { output ->
+                        input.lines().forEach { line ->
+                            if (line.contains("@OUTPUT_FILE@"))
+                                output.println(line.replace("@OUTPUT_FILE@", outputFilePath.toString()))
+                            else if (line.contains("@DAIKON_JAR@"))
+                                output.println(line.replace("@DAIKON_JAR@", daikonJarPath))
+                            else if (line.contains("@PATTERN@"))
+                                output.println(line.replace("@PATTERN@", selectedPattern))
+                            else
+                                output.println(line)
+                        }
+                    }
+                    if (!Files.isExecutable(newScript))
+                        newScript.toFile().setExecutable(true, true)
+                }
+                test.executable = newScript.toString()
             }
-            test.executable = newScript.toString()
             test.classpath = test.classpath.plus(additionalClassPath)
         }
     }
