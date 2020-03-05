@@ -70,7 +70,8 @@ open class Daikon : DefaultTask() {
         val outputFilePath = outputDirectoryPath.resolve("test.inv.gz")
         try {
             Files.deleteIfExists(outputFilePath)
-            logger.warn("Removed test.inv.gz")
+            Files.deleteIfExists(outputDirectoryPath.resolve("result.inv.gz"))
+            logger.warn("Removed test.inv.gz and result.inv.gz")
         } catch(e: Throwable) {
             logger.error("Failed to remove the old daikon results file", e)
         }

@@ -8,6 +8,7 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.testing.Test
 import java.nio.file.Files
+import kotlin.concurrent.thread
 
 
 open class DaikonAfterTest : DefaultTask() {
@@ -19,7 +20,14 @@ open class DaikonAfterTest : DefaultTask() {
 
     @TaskAction
     internal fun daikonAfterTest() {
-        if (inputFile.isPresent && inputFile.get().asFile.exists())
-            inputFile.get().asFile.renameTo(outputFile.get().asFile)
+        var i = 0
+        while(i<10){
+            if (inputFile.isPresent && inputFile.get().asFile.exists()) {
+                inputFile.get().asFile.renameTo(outputFile.get().asFile)
+                break
+            }
+            Thread.sleep(100)
+            i++
+        }
     }
 }
