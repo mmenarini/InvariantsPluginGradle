@@ -182,7 +182,7 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
             var sootConfig = project.configurations.findByName("sootconfig")
             if (sootConfig==null) {
                 sootConfig = project.configurations.create("sootconfig")
-                project.dependencies.add("sootconfig","ca.mcgill.sable:soot:3.3.0")
+                project.dependencies.add("sootconfig","ca.mcgill.sable:soot:4.1.0")
             }
             //project.dependencies.add("sootconfig","org.jetbrains.kotlin:kotlin-reflect:1.3.20")
             //sootConfig.resolve()

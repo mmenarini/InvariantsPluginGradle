@@ -57,6 +57,8 @@ open class CallGraphWorkerSoot @Inject constructor(
                 }
             }
         }
+        println("Running callgrapth analysis for entrypoints:")
+        println(entryPointsList.joinToString ( prefix = "[", postfix = "]", separator = ", "))
         Scene.v().entryPoints = entryPointsList
         val wjtp = PackManager.v().getPack("wjtp")
         wjtp.add(
