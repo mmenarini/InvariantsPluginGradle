@@ -23,7 +23,7 @@ class TestsResultsUtils {
         name = regexDollar.replace(name,".")
         return name
     }
-    fun LoadTestMethodsList(testClass: MutableSet<String>, testMethods: MutableSet<String>, file : File){
+    fun LoadTestMethodsList(testClass: MutableSet<String>, testMethods: MutableList<String>, file : File){
         if (!file.exists()) return
         System.out.println("Reading testEntryPoints.txt")
         file.readLines().forEach {
@@ -34,7 +34,7 @@ class TestsResultsUtils {
         }
         System.out.println("testEntryPoints.txt read.")
     }
-    fun OutputTestMethodsList(testClass: Set<String>, testMethods: Set<String>, file: File){
+    fun OutputTestMethodsList(testClass: Set<String>, testMethods: List<String>, file: File){
         System.out.println("Writing testEntryPoints.txt, will contain ${testClass.count()} classes " +
                 "and ${testMethods.count()} methods")
         file.printWriter().use { out ->
@@ -42,7 +42,7 @@ class TestsResultsUtils {
                 testClass.forEach {
                     out.println("C:${it}")
                 }
-                testMethods.toTypedArray().forEach {
+                testMethods.forEach {
                     out.println("M:${it}")
                 }
             } catch(e: NullPointerException) {

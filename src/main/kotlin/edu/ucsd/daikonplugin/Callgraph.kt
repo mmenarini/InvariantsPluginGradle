@@ -58,16 +58,16 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
     @TaskAction
     internal fun callgraph(inputChanges: InputChanges) {
         val testsToAnalyze = mutableSetOf<String>()
-        val testMethodsList = mutableSetOf<String>()
+        val testMethodsList = mutableListOf<String>()
         val testClassesSet = mutableSetOf<String>()
         Files.createDirectories(outputDirectory.get().asFile.toPath())
         val cachedTestEntryPointFile = outputDirectory.get().asFile.resolve(Tests.OUTPUT_FILE_NAME)
         if (inputChanges.isIncremental) {
             if (cachedTestEntryPointFile.exists())
-                utils.LoadTestMethodsList(testClassesSet, testMethodsList, cachedTestEntryPointFile)
+                utils.LoadTestMethodsList(testClassesSet, testMethodsList.toMutableList(), cachedTestEntryPointFile)
             var testMethodsListNew = mutableSetOf<String>()
             var testClassesSetNew = mutableSetOf<String>()
-            utils.LoadTestMethodsList(testClassesSetNew, testMethodsListNew, testEntryPoints.get().asFile)
+            utils.LoadTestMethodsList(testClassesSetNew, testMethodsListNew.toMutableList(), testEntryPoints.get().asFile)
             testsToAnalyze.addAll(testMethodsListNew.minus(testMethodsList))
             val addedClasses = ArrayList<String>()
             val changedClasses = ArrayList<String>()
@@ -188,7 +188,7 @@ open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : D
             //sootConfig.resolve()
 
             workerExecutor.submit(CallGraphWorkerSoot::class.java) {
-                it.isolationMode = IsolationMode.PROCESS
+                it.isolationMode = IsolationMode.CLASSLOADER
                 //CLASSLOADER
                 //PROCESS
                 // Constructor parameters for the unit of work implementation

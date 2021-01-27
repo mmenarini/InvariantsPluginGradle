@@ -28,7 +28,7 @@ open class TestsWorkerSoot @Inject constructor(
                 "-d", outputDirectory
         )
 
-        var testMethodsList = mutableSetOf<String>()
+        var testMethodsList = mutableListOf<String>()
         var testClassesSet = mutableSetOf<String>()
         val file = Paths.get(outputDirectory).resolve(Tests.OUTPUT_FILE_NAME).toFile()
         utils.LoadTestMethodsList(testClassesSet, testMethodsList, file)
@@ -62,9 +62,11 @@ open class TestsWorkerSoot @Inject constructor(
                             var method = b.method
                             var declClass = method?.declaringClass
                             if(declClass==null || method==null || method.isConstructor) return
-                            if ((utils.isInstanceOfClass(declClass,"junit.framework.TestCase") && method.name.startsWith("test")) ||
+                            if ((utils.isInstanceOfClass(declClass,"junit.framework.TestCase") && method?.name.startsWith("test")) ||
                                     utils.isAnnotatedTest(method))
                             {
+                                if(declClass.name == "com.google.gson.JsonPrimitiveTest")
+                                    System.err.println("method name and class name "+method?.signature+declClass?.name)
                                 var className = declClass?.name
                                 var methodName = method?.name
                                 if(className!=null && methodName!=null) {
@@ -73,6 +75,7 @@ open class TestsWorkerSoot @Inject constructor(
                                 }
                             }
                         }
+
                     }))
         }catch (ex:Exception) {
             System.err.println(ex.message)
