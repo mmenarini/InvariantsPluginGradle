@@ -8,7 +8,7 @@ import org.gradle.workers.WorkerExecutor
 import java.nio.file.Files
 import javax.inject.Inject
 
-open class Invariants @Inject constructor(val workerExecutor: WorkerExecutor): DefaultTask() {
+open class Invariants @Inject constructor(private val workerExecutor: WorkerExecutor): DefaultTask() {
 
     @Internal
     lateinit var daikonJarPath: String
@@ -25,7 +25,7 @@ open class Invariants @Inject constructor(val workerExecutor: WorkerExecutor): D
     val inputFile = project.objects.fileProperty()
 
     @OutputDirectory
-    var outputDirectory : DirectoryProperty = project.objects.directoryProperty()
+    val outputDirectory : DirectoryProperty = project.objects.directoryProperty()
 
     @TaskAction
     internal fun invariants() {

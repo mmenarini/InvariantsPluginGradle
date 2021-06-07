@@ -43,7 +43,7 @@ open class Daikon : DefaultTask() {
     @Optional
     val methodSignature = project.objects.property(String::class.java)
     @OutputDirectory
-    var outputDirectory = project.objects.directoryProperty()
+    val outputDirectory = project.objects.directoryProperty()
 
     //    @OutputFile
 //    var outputFile = project.objects.fileProperty()

@@ -13,10 +13,10 @@ import kotlin.concurrent.thread
 
 open class DaikonAfterTest : DefaultTask() {
     @Internal
-    var inputFile = project.objects.fileProperty()
+    val inputFile = project.objects.fileProperty()
 
     @OutputFile
-    var outputFile = project.objects.fileProperty()
+    val outputFile = project.objects.fileProperty()
 
     @TaskAction
     internal fun daikonAfterTest() {

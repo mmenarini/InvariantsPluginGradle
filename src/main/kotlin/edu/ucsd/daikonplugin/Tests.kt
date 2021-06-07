@@ -16,7 +16,7 @@ import java.nio.file.Files
 import javax.inject.Inject
 
 
-open class Tests @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
+open class Tests @Inject constructor(private val workerExecutor: WorkerExecutor) : DefaultTask() {
     companion object {
         const val OUTPUT_FILE_NAME = "testEntryPoints.txt"
     }

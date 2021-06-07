@@ -1,18 +1,9 @@
 package edu.ucsd.daikonplugin
 
-
-import com.github.javaparser.JavaParser
-import com.github.javaparser.ast.body.MethodDeclaration
-import com.github.javaparser.symbolsolver.JavaSymbolSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.JarTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver
-import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.FileCollection
 import org.gradle.api.file.FileType
-import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.testing.Test
 import org.gradle.work.ChangeType
@@ -20,15 +11,12 @@ import org.gradle.work.Incremental
 import org.gradle.work.InputChanges
 import org.gradle.workers.IsolationMode
 import org.gradle.workers.WorkerExecutor
-import java.io.File
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 import javax.inject.Inject
 
-
-open class Callgraph @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
+open class Callgraph @Inject constructor(private val workerExecutor: WorkerExecutor) : DefaultTask() {
     @get:Incremental
     @get:PathSensitive(PathSensitivity.RELATIVE)
     @get:InputFiles

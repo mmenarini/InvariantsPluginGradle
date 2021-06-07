@@ -2,11 +2,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     `java-gradle-plugin`
-    kotlin("jvm") version "1.3.20"
+    kotlin("jvm") version "1.3.50"
 }
 
 group = "edu.ucsd.invariants"
-version = "0.1-beta"
+version = "0.2-beta"
 
 gradlePlugin {
     plugins {
@@ -26,17 +26,16 @@ repositories {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.20")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.3.50")
     implementation(kotlin("stdlib-jdk8"))
     implementation("com.github.javaparser:javaparser-symbol-solver-core:3.11.0")
-    //compileOnly("ca.mcgill.sable:soot:3.2.0")
-    compileOnly("ca.mcgill.sable:soot:4.1.0")
+    implementation("ca.mcgill.sable:soot:4.1.0")
     //compileOnly(project.layout.files("/home/mmenarini/daikon-5.7.2/daikon.jar"))
     //compileOnly(project.layout.files("/home/mmenarini/Dev/daikon/daikon.jar"))
 }
 
 tasks.wrapper {
-    gradleVersion = "6.1.1"
+    gradleVersion = "6.7.1"
 }
 
 val compileKotlin: KotlinCompile by tasks

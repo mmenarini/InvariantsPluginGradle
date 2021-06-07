@@ -23,7 +23,7 @@ import java.nio.file.Files
 import javax.inject.Inject
 
 
-open class CallgraphSingle @Inject constructor(val workerExecutor: WorkerExecutor) : DefaultTask() {
+open class CallgraphSingle @Inject constructor(private val workerExecutor: WorkerExecutor) : DefaultTask() {
     @InputFiles
     val classFiles = project.objects.property(FileCollection::class.java)
     @InputFile
